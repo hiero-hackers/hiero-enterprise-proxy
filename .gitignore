@@ -1,0 +1,25 @@
+# Build artifacts
+target/
+*.jar
+*.war
+*.class
+
+# IDE and Editor files
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+.metadata/
+.kiro/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
