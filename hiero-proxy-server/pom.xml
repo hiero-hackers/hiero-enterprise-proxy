@@ -44,6 +44,13 @@
             <artifactId>grpc-netty-shaded</artifactId>
             <version>1.80.0</version>
         </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.5.0</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -52,6 +59,17 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring.boot.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!-- Preserve parameter names at runtime so Spring MVC and springdoc
+                         can resolve @PathVariable / @RequestParam without explicit name attributes -->
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
             </plugin>
         </plugins>
     </build>
