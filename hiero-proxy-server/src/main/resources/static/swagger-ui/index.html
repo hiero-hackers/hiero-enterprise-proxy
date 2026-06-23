@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hiero Enterprise Proxy API</title>
+    <link rel="stylesheet" type="text/css" href="./swagger-ui.css">
+    <link rel="icon" type="image/png" href="./favicon-32x32.png" sizes="32x32"/>
+    <link rel="icon" type="image/png" href="./favicon-16x16.png" sizes="16x16"/>
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="./swagger-ui-bundle.js" charset="UTF-8"></script>
+<script src="./swagger-ui-standalone-preset.js" charset="UTF-8"></script>
+<script>
+    // Debug: confirm this custom index.html is being served
+    console.log("[Hiero Proxy] Custom index.html loaded — operationsSorter active");
+
+    // Desired endpoint order: "METHOD /path" -> position index (lowercase keys).
+    var ENDPOINT_ORDER = {
+        "post /api/v1/accounts": 0,
+        "get /api/v1/accounts/{accountid}/balance": 1,
+        "get /api/v1/accounts/operator/balance": 2,
+        "get /api/v1/accounts/{accountid}/info": 3,
+        "put /api/v1/accounts/{accountid}/key": 4,
+        "put /api/v1/accounts/{accountid}/memo": 5,
+        "put /api/v1/accounts/{accountid}": 6,
+        "post /api/v1/accounts/transfer": 7,
+        "post /api/v1/accounts/{accountid}/transfer": 8,
+        "delete /api/v1/accounts/{accountid}": 9,
+        "delete /api/v1/accounts/{accountid}/to/{recipientaccountid}": 10,
+        "post /api/v1/topics": 11,
+        "post /api/v1/topics/private": 12,
+        "get /api/v1/topics/{topicid}": 13,
+        "get /api/v1/topics/{topicid}/messages": 14,
+        "get /api/v1/topics/{topicid}/messages/{sequencenumber}": 15,
+        "put /api/v1/topics/{topicid}/memo": 16,
+        "put /api/v1/topics/{topicid}/admin-key": 17,
+        "put /api/v1/topics/{topicid}/submit-key": 18,
+        "post /api/v1/topics/{topicid}/messages": 19,
+        "delete /api/v1/topics/{topicid}": 20
+    };
+
+    function getOrder(op) {
+        try {
+            // Swagger UI passes Immutable.js Map objects to operationsSorter.
+            // The map has keys: "method", "path", "operation", "summary" etc.
+            var method = typeof op.get === "function" ? op.get("method") : op.method;
+            var path   = typeof op.get === "function" ? op.get("path")   : op.path;
+            if (!method || !path) return 9999;
+            var key = (method + " " + path).toLowerCase();
+            console.log("[Hiero Proxy] sorting key:", key);
+            var order = ENDPOINT_ORDER[key];
+            return order !== undefined ? order : 9999;
+        } catch (e) {
+            console.error("[Hiero Proxy] sort error:", e);
+            return 9999;
+        }
+    }
+
+    window.onload = function () {
+        window.ui = SwaggerUIBundle({
+            url: "/v3/api-docs",
+            dom_id: '#swagger-ui',
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+            ],
+            layout: "StandaloneLayout",
+            deepLinking: true,
+            showExtensions: false,
+            showCommonExtensions: true,
+
+            tagsSorter: function (a, b) {
+                var order = ["Accounts", "Topics"];
+                var ai = order.indexOf(a);
+                var bi = order.indexOf(b);
+                if (ai === -1 && bi === -1) return a.localeCompare(b);
+                if (ai === -1) return 1;
+                if (bi === -1) return -1;
+                return ai - bi;
+            },
+
+            operationsSorter: function (a, b) {
+                return getOrder(a) - getOrder(b);
+            }
+        });
+    }
+</script>
+</body>
+</html>
