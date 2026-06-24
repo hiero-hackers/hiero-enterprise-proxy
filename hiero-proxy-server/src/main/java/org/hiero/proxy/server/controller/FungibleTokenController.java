@@ -17,6 +17,7 @@ import org.hiero.proxy.server.dto.request.BurnTokenRequest;
 import org.hiero.proxy.server.dto.request.CreateTokenRequest;
 import org.hiero.proxy.server.dto.request.MintTokenRequest;
 import org.hiero.proxy.server.dto.request.TokenAssociateRequest;
+import org.hiero.proxy.server.dto.request.TokenBatchAssociateRequest;
 import org.hiero.proxy.server.dto.request.TokenOperatorTransferRequest;
 import org.hiero.proxy.server.dto.request.TokenTransferRequest;
 import org.hiero.proxy.server.dto.response.SuccessResponse;
@@ -353,7 +354,89 @@ public class FungibleTokenController {
                 request.accountId(),
                 request.accountKey());
         return ResponseEntity.ok(SuccessResponse.of(
-                "Account " + request.accountId() + " dissociated from token " + tokenId + " successfully."));
+                        "Account " + request.accountId() + " dissociated from token " + tokenId + " successfully."));
+    }
+
+    @PostMapping("/associate")
+    @Operation(
+            summary = "Batch associate account with multiple tokens",
+            description = "Associates a Hedera account with multiple tokens at once so it can hold and receive token units.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Account associated with tokens successfully.",
+                    content = @Content(
+                            schema = @Schema(implementation = SuccessResponse.class),
+                            examples = @ExampleObject(value = """
+                                    { "message": "Account 0.0.12345 associated with 2 tokens successfully." }"""))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Association could not be executed.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<SuccessResponse> batchAssociateTokens(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "List of Token IDs, Account ID, and private key to authorise the association.",
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = TokenBatchAssociateRequest.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "tokenIds": ["0.0.55001", "0.0.55002"],
+                                      "accountId": "0.0.12345",
+                                      "accountKey": "302e020100300506032b657004220420aabbcc..."
+                                    }""")))
+            @RequestBody TokenBatchAssociateRequest request) throws Exception {
+        List<TokenId> tokenIds = request.tokenIds().stream()
+                .map(TokenId::fromString)
+                .collect(Collectors.toList());
+        tokenClient.associateToken(
+                tokenIds,
+                AccountId.fromString(request.accountId()),
+                PrivateKey.fromString(request.accountKey()));
+        return ResponseEntity.ok(SuccessResponse.of(
+                "Account " + request.accountId() + " associated with " + tokenIds.size() + " tokens successfully."));
+    }
+
+    @DeleteMapping("/associate")
+    @Operation(
+            summary = "Batch dissociate account from multiple tokens",
+            description = "Removes the association between a Hedera account and multiple tokens at once.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Account dissociated from tokens successfully.",
+                    content = @Content(
+                            schema = @Schema(implementation = SuccessResponse.class),
+                            examples = @ExampleObject(value = """
+                                    { "message": "Account 0.0.12345 dissociated from 2 tokens successfully." }"""))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Dissociation could not be executed.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<SuccessResponse> batchDissociateTokens(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "List of Token IDs, Account ID, and private key to authorise the dissociation.",
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = TokenBatchAssociateRequest.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "tokenIds": ["0.0.55001", "0.0.55002"],
+                                      "accountId": "0.0.12345",
+                                      "accountKey": "302e020100300506032b657004220420aabbcc..."
+                                    }""")))
+            @RequestBody TokenBatchAssociateRequest request) throws Exception {
+        List<TokenId> tokenIds = request.tokenIds().stream()
+                .map(TokenId::fromString)
+                .collect(Collectors.toList());
+        tokenClient.dissociateToken(
+                tokenIds,
+                AccountId.fromString(request.accountId()),
+                PrivateKey.fromString(request.accountKey()));
+        return ResponseEntity.ok(SuccessResponse.of(
+                "Account " + request.accountId() + " dissociated from " + tokenIds.size() + " tokens successfully."));
     }
 
     // ─── Mint ────────────────────────────────────────────────────────────────

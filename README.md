@@ -87,6 +87,8 @@ The server starts on port `8080`. Open `http://localhost:8080/swagger-ui/index.h
 | `GET` | `/api/v1/tokens/{tokenId}/balances` | Get all account balances for a token from mirror node |
 | `GET` | `/api/v1/tokens/{tokenId}/balances/{accountId}` | Get token balance for an account from mirror node |
 | `GET` | `/api/v1/tokens/account/{accountId}` | Get all tokens associated with an account from mirror node |
+| `POST` | `/api/v1/tokens/associate` | Batch associate an account with multiple tokens |
+| `DELETE` | `/api/v1/tokens/associate` | Batch dissociate an account from multiple tokens |
 | `POST` | `/api/v1/tokens/{tokenId}/associate` | Associate an account with a token |
 | `DELETE` | `/api/v1/tokens/{tokenId}/associate` | Dissociate an account from a token |
 | `POST` | `/api/v1/tokens/{tokenId}/mint` | Mint new token units to the treasury |
