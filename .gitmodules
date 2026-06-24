@@ -1,4 +1,0 @@
-[submodule "lib/hiero-enterprise-java"]
-	path = lib/hiero-enterprise-java
-	url = https://github.com/hiero-ledger/hiero-enterprise-java.git
-	branch = main
