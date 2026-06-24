@@ -1,22 +1,29 @@
 # Hiero Enterprise Proxy
 
-A Spring Boot REST proxy server that exposes the [hiero-enterprise-java](https://github.com/hiero-ledger/hiero-enterprise-java) SDK as a documented HTTP API, complete with Swagger UI. It allows enterprise clients to interact with the Hiero/Hedera network without a direct SDK dependency.
+A Spring Boot REST proxy server that exposes the [hiero-enterprise-java](https://github.com/hiero-ledger/hiero-enterprise-java) SDK as a documented HTTP API. It provides a Swagger UI for all Hiero network operations without requiring direct SDK integration in client applications.
+
+## Features
+
+- Full **Account** management — create, query, update, delete, transfer HBAR
+- Full **Topic (HCS)** management — create public/private topics, submit messages, query topic info and message history
+- Interactive **Swagger UI** at `http://localhost:8080/swagger-ui/index.html`
+- Structured error responses following RFC 7807
+- No Git submodules — all dependencies are resolved from Maven Central
 
 ## Prerequisites
 
 - Java 21
-- Maven (or use the included `mvnw` wrapper)
-- A funded Hedera testnet account ([portal.hedera.com](https://portal.hedera.com))
+- A funded [Hedera testnet account](https://portal.hedera.com)
 
 ## Getting Started
 
-### 1. Configure your environment
+### 1. Configure environment
 
 Create a `.env` file in the project root:
 
 ```env
 HEDERA_ACCOUNT_ID=0.0.xxxxx
-HEDERA_PRIVATE_KEY=your_operator_private_key_here
+HEDERA_PRIVATE_KEY=your_operator_private_key
 HEDERA_NETWORK=hedera-testnet
 ```
 
@@ -32,35 +39,27 @@ HEDERA_NETWORK=hedera-testnet
 .\mvnw.cmd spring-boot:run -pl hiero-proxy-server
 ```
 
-The server starts on `http://localhost:8080`.
-
-### 3. Explore the API
-
-Open Swagger UI in your browser:
-
-```
-http://localhost:8080/swagger-ui/index.html
-```
+The server starts on port `8080`. Open `http://localhost:8080/swagger-ui/index.html` to explore all endpoints interactively.
 
 ## API Reference
 
-### Accounts (`/api/v1/accounts`)
+### Accounts — `/api/v1/accounts`
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/accounts` | Create a new account (optional initial balance) |
+| `POST` | `/api/v1/accounts` | Create a new account (optional initial HBAR balance) |
 | `GET` | `/api/v1/accounts/{accountId}/balance` | Get account HBAR balance |
 | `GET` | `/api/v1/accounts/operator/balance` | Get operator HBAR balance |
 | `GET` | `/api/v1/accounts/{accountId}/info` | Get detailed account info from mirror node |
 | `PUT` | `/api/v1/accounts/{accountId}/key` | Rotate account key pair (server generates new key) |
 | `PUT` | `/api/v1/accounts/{accountId}/memo` | Update account memo |
-| `PUT` | `/api/v1/accounts/{accountId}` | Atomic key rotation and memo update |
+| `PUT` | `/api/v1/accounts/{accountId}` | Atomic key rotation + memo update |
 | `POST` | `/api/v1/accounts/transfer` | Transfer HBAR from operator to an account |
 | `POST` | `/api/v1/accounts/{accountId}/transfer` | Transfer HBAR between user accounts |
-| `DELETE` | `/api/v1/accounts/{accountId}` | Delete account, balance transferred to operator |
-| `DELETE` | `/api/v1/accounts/{accountId}/to/{recipientAccountId}` | Delete account, balance transferred to recipient |
+| `DELETE` | `/api/v1/accounts/{accountId}` | Delete account — balance transfers to operator |
+| `DELETE` | `/api/v1/accounts/{accountId}/to/{recipientAccountId}` | Delete account — balance transfers to recipient |
 
-### Topics (`/api/v1/topics`)
+### Topics — `/api/v1/topics`
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -74,18 +73,30 @@ http://localhost:8080/swagger-ui/index.html
 | `PUT` | `/api/v1/topics/{topicId}/memo` | Update topic memo |
 | `PUT` | `/api/v1/topics/{topicId}/admin-key` | Rotate topic admin key (server generates new key) |
 | `PUT` | `/api/v1/topics/{topicId}/submit-key` | Rotate topic submit key (server generates new key) |
-| `PUT` | `/api/v1/topics/{topicId}` | Atomic update of admin key, submit key, and memo |
+| `PUT` | `/api/v1/topics/{topicId}` | Atomic admin key + submit key + memo update |
 | `POST` | `/api/v1/topics/{topicId}/messages` | Submit a text message to a topic |
 | `POST` | `/api/v1/topics/{topicId}/messages/binary` | Submit a binary message (Base64-encoded) to a topic |
 | `DELETE` | `/api/v1/topics/{topicId}` | Delete a topic |
 
 ## Key Design Decisions
 
-- **Server-side key generation** — key rotation endpoints (`PUT .../key`, `PUT .../admin-key`, `PUT .../submit-key`) generate fresh ED25519 key pairs on the server. The caller provides only their current key to authorise the operation and receives the new key pair in the response. This is consistent with account creation where the server also generates the key pair.
-- **Contextual success responses** — mutation endpoints that have no data to return respond with a `SuccessResponse` carrying a human-readable message rather than an empty `200` body.
-- **Operator as default** — operations that require an admin or signing key default to the configured operator key when no custom key is provided.
+**Server-side key generation** — key creation and rotation endpoints generate fresh ED25519 key pairs on the server and return them in the response. This is consistent across account creation, account key rotation, and topic key rotation. The caller must save the returned private key — it is only shown once.
 
-## Dependencies
+**Structured success responses** — mutation endpoints that have no data to return respond with a `SuccessResponse` containing a contextual message rather than an empty body.
 
-- [hiero-enterprise-spring](https://central.sonatype.com/artifact/org.hiero/hiero-enterprise-spring) `0.20.0` — auto-configures `AccountClient`, `TopicClient`, `AccountRepository`, `TopicRepository`, and all other Hiero service beans.
-- [springdoc-openapi-starter-webmvc-ui](https://springdoc.org/) `2.5.0` — generates Swagger UI from the controller annotations.
+**Maven Central dependencies** — the `hiero-enterprise-java` library is consumed as a versioned Maven dependency (`org.hiero:hiero-enterprise-spring:0.20.0`). No Git submodules are required.
+
+## Project Structure
+
+```
+hiero-enterprise-proxy/
+├── hiero-proxy-server/          # Spring Boot application
+│   └── src/main/java/org/hiero/proxy/server/
+│       ├── config/              # OpenAPI / Swagger UI configuration
+│       ├── controller/          # REST controllers (AccountController, TopicController)
+│       ├── dto/
+│       │   ├── request/         # Inbound HTTP request body records
+│       │   └── response/        # Outbound HTTP response records with from() factories
+│       └── exception/           # Global exception handler and ErrorResponse
+└── pom.xml                      # Root Maven POM
+```
