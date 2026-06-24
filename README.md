@@ -78,6 +78,19 @@ The server starts on port `8080`. Open `http://localhost:8080/swagger-ui/index.h
 | `POST` | `/api/v1/topics/{topicId}/messages/binary` | Submit a binary message (Base64-encoded) to a topic |
 | `DELETE` | `/api/v1/topics/{topicId}` | Delete a topic |
 
+### Fungible Tokens — `/api/v1/tokens`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/tokens` | Create a fungible token |
+| `GET` | `/api/v1/tokens/{tokenId}` | Get detailed token info from mirror node |
+| `POST` | `/api/v1/tokens/{tokenId}/associate` | Associate an account with a token |
+| `DELETE` | `/api/v1/tokens/{tokenId}/associate` | Dissociate an account from a token |
+| `POST` | `/api/v1/tokens/{tokenId}/mint` | Mint new token units to the treasury |
+| `POST` | `/api/v1/tokens/{tokenId}/burn` | Burn token units from the treasury |
+| `POST` | `/api/v1/tokens/{tokenId}/transfer` | Transfer tokens from the operator to an account |
+| `POST` | `/api/v1/tokens/{tokenId}/transfer/{fromAccountId}` | Transfer tokens between user accounts |
+
 ## Key Design Decisions
 
 **Server-side key generation** — key creation and rotation endpoints generate fresh ED25519 key pairs on the server and return them in the response. This is consistent across account creation, account key rotation, and topic key rotation. The caller must save the returned private key — it is only shown once.
