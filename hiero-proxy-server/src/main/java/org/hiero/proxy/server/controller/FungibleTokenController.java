@@ -23,6 +23,7 @@ import org.hiero.proxy.server.dto.response.SuccessResponse;
 import org.hiero.proxy.server.dto.response.TokenCreatedResponse;
 import org.hiero.proxy.server.dto.response.TokenInfoResponse;
 import org.hiero.proxy.server.dto.response.TokenSupplyResponse;
+import org.hiero.proxy.server.dto.response.TokenBalanceResponse;
 import org.hiero.proxy.server.exception.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -173,6 +174,47 @@ public class FungibleTokenController {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Token not found: " + tokenId));
+    }
+
+    @GetMapping("/{tokenId}/balances/{accountId}")
+    @Operation(
+            summary = "Get token balance",
+            description = "Fetches the token balance for a specific account from the Hiero mirror node.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Token balance retrieved successfully.",
+                    content = @Content(
+                            schema = @Schema(implementation = TokenBalanceResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "accountId": "0.0.12345",
+                                      "balance": 250,
+                                      "decimals": 0
+                                    }"""))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Balance not found on the mirror node.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Could not retrieve balance info.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<TokenBalanceResponse> getTokenBalance(
+            @Parameter(description = "The Hedera token ID.", required = true, example = "0.0.55001")
+            @PathVariable("tokenId") String tokenId,
+            @Parameter(description = "The Hedera account ID.", required = true, example = "0.0.12345")
+            @PathVariable("accountId") String accountId) throws Exception {
+        return tokenRepository.getBalancesForAccount(tokenId, accountId)
+                .getData()
+                .stream()
+                .findFirst()
+                .map(TokenBalanceResponse::from)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Balance not found for token: " + tokenId + " and account: " + accountId));
     }
 
     // ─── Associate / Dissociate ───────────────────────────────────────────────
