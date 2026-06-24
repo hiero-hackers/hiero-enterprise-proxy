@@ -13,7 +13,6 @@
     <description>Root project for Hiero Enterprise Proxy</description>
 
     <modules>
-        <module>lib/hiero-enterprise-java</module>
         <module>hiero-proxy-server</module>
     </modules>
 
