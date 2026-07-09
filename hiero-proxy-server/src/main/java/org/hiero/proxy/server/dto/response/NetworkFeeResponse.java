@@ -3,7 +3,7 @@ package org.hiero.proxy.server.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.hiero.base.data.NetworkFee;
 
-@Schema(description = "Gas fee for a specific Hiero transaction type.")
+@Schema(description = "EVM gas fee for a specific Hiero smart contract or Ethereum transaction type.")
 public record NetworkFeeResponse(
         @Schema(description = "The gas cost for this transaction type.", example = "853000")
         long gas,

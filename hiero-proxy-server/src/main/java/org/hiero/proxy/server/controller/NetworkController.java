@@ -85,21 +85,24 @@ public class NetworkController {
 
     @GetMapping("/fees")
     @Operation(
-            summary = "Get network transaction fees",
-            description = "Fetches the current gas fees for all Hiero transaction types from the mirror node. "
-                    + "Each entry lists the gas cost for one transaction type (e.g. CRYPTOTRANSFER, TOKENMINT). "
+            summary = "Get EVM gas fees",
+            description = "Fetches the current EVM gas fees for smart contract and Ethereum transaction types "
+                    + "from the Hiero mirror node (sourced from `/api/v1/network/fees`). "
+                    + "This covers EVM-based operations such as ContractCall, ContractCreate, and EthereumTransaction. "
+                    + "Note: HBAR transfer and HTS token fees (CRYPTOTRANSFER, TOKENMINT, etc.) use a separate "
+                    + "USD-denominated fee schedule and are not included here. "
                     + "Returns an empty list if no fee schedule is currently published.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "Network fees retrieved successfully.",
+                    description = "EVM gas fees retrieved successfully.",
                     content = @Content(
                             schema = @Schema(implementation = NetworkFeeResponse.class, type = "array"),
                             examples = @ExampleObject(value = """
                                     [
-                                      { "gas": 853000, "transactionType": "CRYPTOTRANSFER" },
-                                      { "gas": 1000000, "transactionType": "TOKENMINT" },
-                                      { "gas": 1000000, "transactionType": "TOKENCREATE" }
+                                      { "gas": 171, "transactionType": "ContractCall" },
+                                      { "gas": 371, "transactionType": "ContractCreate" },
+                                      { "gas": 113, "transactionType": "EthereumTransaction" }
                                     ]"""))),
             @ApiResponse(
                     responseCode = "500",
