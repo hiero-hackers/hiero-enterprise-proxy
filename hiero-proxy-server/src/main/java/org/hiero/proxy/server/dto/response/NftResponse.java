@@ -12,7 +12,9 @@ public record NftResponse(
         @Schema(description = "The serial number of this NFT instance.", example = "1")
         long serialNumber,
 
-        @Schema(description = "The account ID that currently owns this NFT.", example = "0.0.12345")
+        @Schema(description = "The account ID that currently owns this NFT. Null if the NFT has been burned.",
+                example = "0.0.12345",
+                nullable = true)
         String ownerId,
 
         @Schema(description = "Base64-encoded metadata associated with this NFT instance.",
@@ -24,7 +26,7 @@ public record NftResponse(
         return new NftResponse(
                 nft.tokenId().toString(),
                 nft.serial(),
-                nft.owner().toString(),
+                nft.owner() != null ? nft.owner().toString() : null,
                 Base64.getEncoder().encodeToString(nft.metadata())
         );
     }
