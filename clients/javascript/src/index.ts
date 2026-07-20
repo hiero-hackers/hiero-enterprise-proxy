@@ -1,6 +1,6 @@
 export { HieroProxyClient } from "./client";
 export { HieroProxyError, ClientError, ServerError, NetworkError } from "./errors";
-export { AccountsResource, NetworkResource, TokensResource, NftsResource, TopicsResource } from "./resources";
+export { AccountsResource, NetworkResource, TokensResource, NftsResource, TopicsResource, ContractsResource, FilesResource, BlocksResource, TransactionsResource } from "./resources";
 export type { HieroProxyConfig, ProxyErrorBody } from "./types";
 export type {
   AccountResponse,
@@ -28,4 +28,23 @@ export type {
   TopicKeyRotationResponse,
   TopicUpdatedResponse,
   TopicMessageResponse,
+} from "./resources";
+export type {
+  ContractCreateRequest,
+  ContractCallRequest,
+  ContractResponse,
+  ContractCallResultResponse,
+  FileCreateRequest,
+  FileUpdateContentsRequest,
+  FileUpdateExpirationRequest,
+  FileCreatedResponse,
+  FileContentsResponse,
+  FileInfoResponse,
+  BlockResponse,
+  HbarTransferResponse,
+  TokenTransferResponse,
+  NftTransferInfoResponse,
+  StakingRewardTransferResponse,
+  TransactionInfoResponse,
+  TransactionFilterOptions,
 } from "./resources";

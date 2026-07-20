@@ -13,14 +13,7 @@ import type {
   OperatorTransferRequest,
   TransferRequest,
 } from "./types";
-
-/** Validates that an account ID is a non-empty string matching the Hiero format. */
-function requireAccountId(accountId: string, paramName = "accountId"): string {
-  if (!accountId || typeof accountId !== "string" || !accountId.trim()) {
-    throw new Error(`${paramName} is required and must be a non-empty string`);
-  }
-  return encodeURIComponent(accountId.trim());
-}
+import { requireId } from "./validation";
 
 /**
  * Accounts resource — create, query, update, delete accounts and transfer HBAR.
@@ -42,7 +35,7 @@ export class AccountsResource {
    * Get the HBAR balance of a specific account.
    */
   async getBalance(accountId: string): Promise<BalanceResponse> {
-    const id = requireAccountId(accountId);
+    const id = requireId(accountId, "accountId");
     return this.client.get(`/api/v1/accounts/${id}/balance`);
   }
 
@@ -57,7 +50,7 @@ export class AccountsResource {
    * Get detailed account info from the mirror node.
    */
   async getInfo(accountId: string): Promise<AccountInfoResponse> {
-    const id = requireAccountId(accountId);
+    const id = requireId(accountId, "accountId");
     return this.client.get(`/api/v1/accounts/${id}/info`);
   }
 
@@ -67,7 +60,7 @@ export class AccountsResource {
    * @param currentPrivateKey The current private key to authorize the rotation.
    */
   async updateKey(accountId: string, currentPrivateKey: string): Promise<AccountResponse> {
-    const id = requireAccountId(accountId);
+    const id = requireId(accountId, "accountId");
     const body: UpdateKeyRequest = { currentPrivateKey };
     return this.client.put(`/api/v1/accounts/${id}/key`, body);
   }
@@ -79,7 +72,7 @@ export class AccountsResource {
    * @param memo The new memo value.
    */
   async updateMemo(accountId: string, privateKey: string, memo: string): Promise<SuccessResponse> {
-    const id = requireAccountId(accountId);
+    const id = requireId(accountId, "accountId");
     const body: UpdateMemoRequest = { privateKey, memo };
     return this.client.put(`/api/v1/accounts/${id}/memo`, body);
   }
@@ -88,7 +81,7 @@ export class AccountsResource {
    * Update both the key and memo of an account atomically.
    */
   async update(accountId: string, currentPrivateKey: string, memo: string): Promise<AccountResponse> {
-    const id = requireAccountId(accountId);
+    const id = requireId(accountId, "accountId");
     const body: UpdateAccountRequest = { currentPrivateKey, memo };
     return this.client.put(`/api/v1/accounts/${id}`, body);
   }
@@ -97,7 +90,7 @@ export class AccountsResource {
    * Delete an account. Remaining balance goes to the operator.
    */
   async delete(accountId: string, privateKey: string): Promise<SuccessResponse> {
-    const id = requireAccountId(accountId);
+    const id = requireId(accountId, "accountId");
     const body: DeleteAccountRequest = { privateKey };
     return this.client.delete(`/api/v1/accounts/${id}`, body);
   }
@@ -111,8 +104,8 @@ export class AccountsResource {
     accountPrivateKey: string,
     recipientPrivateKey: string
   ): Promise<SuccessResponse> {
-    const id = requireAccountId(accountId);
-    const recipientId = requireAccountId(recipientAccountId, "recipientAccountId");
+    const id = requireId(accountId, "accountId");
+    const recipientId = requireId(recipientAccountId, "recipientAccountId");
     const body: DeleteAccountToRecipientRequest = { accountPrivateKey, recipientPrivateKey };
     return this.client.delete(`/api/v1/accounts/${id}/to/${recipientId}`, body);
   }
@@ -134,7 +127,7 @@ export class AccountsResource {
     toAccountId: string,
     amountInHbar: number
   ): Promise<SuccessResponse> {
-    const id = requireAccountId(fromAccountId, "fromAccountId");
+    const id = requireId(fromAccountId, "fromAccountId");
     const body: TransferRequest = { fromAccountPrivateKey, toAccountId, amountInHbar };
     return this.client.post(`/api/v1/accounts/${id}/transfer`, body);
   }

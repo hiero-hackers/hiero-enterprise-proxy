@@ -5,6 +5,10 @@ import { NetworkResource } from "./resources/network";
 import { TokensResource } from "./resources/tokens";
 import { NftsResource } from "./resources/nfts";
 import { TopicsResource } from "./resources/topics";
+import { ContractsResource } from "./resources/contracts";
+import { FilesResource } from "./resources/files";
+import { BlocksResource } from "./resources/blocks";
+import { TransactionsResource } from "./resources/transactions";
 
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -32,6 +36,18 @@ export class HieroProxyClient {
   /** Topic operations — create, submit messages, query, update, delete. */
   public readonly topics: TopicsResource;
 
+  /** Smart contract operations — deploy, call, query. */
+  public readonly contracts: ContractsResource;
+
+  /** File operations — create, read, update, delete. */
+  public readonly files: FilesResource;
+
+  /** Block queries — list, get by number or hash. */
+  public readonly blocks: BlocksResource;
+
+  /** Transaction queries — get by ID or account. */
+  public readonly transactions: TransactionsResource;
+
   constructor(config: HieroProxyConfig) {
     const baseUrl = config.baseUrl.replace(/\/+$/, "");
     this.config = {
@@ -49,6 +65,10 @@ export class HieroProxyClient {
     this.tokens = new TokensResource(this);
     this.nfts = new NftsResource(this);
     this.topics = new TopicsResource(this);
+    this.contracts = new ContractsResource(this);
+    this.files = new FilesResource(this);
+    this.blocks = new BlocksResource(this);
+    this.transactions = new TransactionsResource(this);
   }
 
   /**
