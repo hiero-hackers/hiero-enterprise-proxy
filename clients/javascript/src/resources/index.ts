@@ -3,6 +3,10 @@ export { NetworkResource } from "./network";
 export { TokensResource } from "./tokens";
 export { NftsResource } from "./nfts";
 export { TopicsResource } from "./topics";
+export { ContractsResource } from "./contracts";
+export { FilesResource } from "./files";
+export { BlocksResource } from "./blocks";
+export { TransactionsResource } from "./transactions";
 export type {
   AccountResponse,
   BalanceResponse,
@@ -40,3 +44,26 @@ export type {
   TopicUpdatedResponse,
   TopicMessageResponse,
 } from "./tokens-topics-types";
+export type {
+  ContractCreateRequest,
+  ContractCallRequest,
+  ContractResponse,
+  ContractCallResultResponse,
+} from "./contracts.types";
+export type {
+  FileCreateRequest,
+  FileUpdateContentsRequest,
+  FileUpdateExpirationRequest,
+  FileCreatedResponse,
+  FileContentsResponse,
+  FileInfoResponse,
+} from "./files.types";
+export type { BlockResponse } from "./blocks.types";
+export type {
+  HbarTransferResponse,
+  TokenTransferResponse,
+  NftTransferInfoResponse,
+  StakingRewardTransferResponse,
+  TransactionInfoResponse,
+  TransactionFilterOptions,
+} from "./transactions.types";
