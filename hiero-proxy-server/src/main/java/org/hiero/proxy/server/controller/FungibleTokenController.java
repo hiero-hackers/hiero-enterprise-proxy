@@ -55,7 +55,7 @@ public class FungibleTokenController {
         this.tokenRepository = Objects.requireNonNull(tokenRepository, "tokenRepository must not be null");
     }
 
-    // ─── Token Creation ──────────────────────────────────────────────────────
+    // Token Creation
 
     @PostMapping
     @Operation(
@@ -133,7 +133,7 @@ public class FungibleTokenController {
         return ResponseEntity.status(HttpStatus.CREATED).body(TokenCreatedResponse.of(tokenId));
     }
 
-    // ─── Token Info (mirror node) ────────────────────────────────────────────
+    // Token Info (mirror node)
 
     @GetMapping("/{tokenId}")
     @Operation(
@@ -275,7 +275,7 @@ public class FungibleTokenController {
         );
     }
 
-    // ─── Associate / Dissociate ───────────────────────────────────────────────
+    // Associate / Dissociate
 
     @PostMapping("/{tokenId}/associate")
     @Operation(
@@ -439,7 +439,7 @@ public class FungibleTokenController {
                 "Account " + request.accountId() + " dissociated from " + tokenIds.size() + " tokens successfully."));
     }
 
-    // ─── Mint ────────────────────────────────────────────────────────────────
+    // Mint
 
     @PostMapping("/{tokenId}/mint")
     @Operation(
@@ -490,7 +490,7 @@ public class FungibleTokenController {
         return ResponseEntity.ok(TokenSupplyResponse.of(newSupply));
     }
 
-    // ─── Burn ────────────────────────────────────────────────────────────────
+    // Burn
 
     @PostMapping("/{tokenId}/burn")
     @Operation(
@@ -541,7 +541,7 @@ public class FungibleTokenController {
         return ResponseEntity.ok(TokenSupplyResponse.of(newSupply));
     }
 
-    // ─── Transfer from Operator ───────────────────────────────────────────────
+    // Transfer from Operator
 
     @PostMapping("/{tokenId}/transfer")
     @Operation(
@@ -593,7 +593,7 @@ public class FungibleTokenController {
                         + " from operator to " + request.toAccountId() + "."));
     }
 
-    // ─── Transfer between User Accounts ──────────────────────────────────────
+    // Transfer between User Accounts
 
     @PostMapping("/{tokenId}/transfer/{fromAccountId}")
     @Operation(

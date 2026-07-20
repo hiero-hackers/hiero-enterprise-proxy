@@ -50,7 +50,7 @@ public class FileController {
         this.fileClient = Objects.requireNonNull(fileClient, "fileClient must not be null");
     }
 
-    // ─── Create ───────────────────────────────────────────────────────────────
+    // Create
 
     @PostMapping
     @Operation(
@@ -110,7 +110,7 @@ public class FileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(FileCreatedResponse.of(fileId));
     }
 
-    // ─── Read Contents ────────────────────────────────────────────────────────
+    // Read Contents
 
     @GetMapping("/{fileId}/contents")
     @Operation(
@@ -140,7 +140,7 @@ public class FileController {
         return ResponseEntity.ok(FileContentsResponse.of(fileId, contents));
     }
 
-    // ─── Read Info ────────────────────────────────────────────────────────────
+    // Read Info
 
     @GetMapping("/{fileId}")
     @Operation(
@@ -177,7 +177,7 @@ public class FileController {
         return ResponseEntity.ok(FileInfoResponse.of(fileId, size, deleted, expiry));
     }
 
-    // ─── Update Contents ──────────────────────────────────────────────────────
+    // Update Contents
 
     @PutMapping("/{fileId}/contents")
     @Operation(
@@ -229,7 +229,7 @@ public class FileController {
         return ResponseEntity.ok(SuccessResponse.of("File " + fileId + " contents updated successfully."));
     }
 
-    // ─── Update Expiration ────────────────────────────────────────────────────
+    // Update Expiration
 
     @PutMapping("/{fileId}/expiration")
     @Operation(
@@ -276,7 +276,7 @@ public class FileController {
         return ResponseEntity.ok(SuccessResponse.of("File " + fileId + " expiration time updated successfully."));
     }
 
-    // ─── Delete ───────────────────────────────────────────────────────────────
+    // Delete
 
     @DeleteMapping("/{fileId}")
     @Operation(

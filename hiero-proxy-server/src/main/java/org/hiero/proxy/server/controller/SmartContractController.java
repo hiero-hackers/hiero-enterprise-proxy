@@ -48,7 +48,7 @@ public class SmartContractController {
         this.contractRepository = Objects.requireNonNull(contractRepository, "contractRepository must not be null");
     }
 
-    // ─── Create ───────────────────────────────────────────────────────────────
+    // Create
 
     @PostMapping
     @Operation(
@@ -125,7 +125,7 @@ public class SmartContractController {
         );
     }
 
-    // ─── Call Function ────────────────────────────────────────────────────────
+    // Call Function
 
     @PostMapping("/{contractId}/call")
     @Operation(
@@ -173,7 +173,7 @@ public class SmartContractController {
         return ResponseEntity.ok(ContractCallResultResponse.from(result));
     }
 
-    // ─── Get All Contracts ────────────────────────────────────────────────────
+    // Get All Contracts
 
     @GetMapping
     @Operation(
@@ -200,7 +200,7 @@ public class SmartContractController {
         );
     }
 
-    // ─── Get Contract by ID ───────────────────────────────────────────────────
+    // Get Contract by ID
 
     @GetMapping("/{contractId}")
     @Operation(

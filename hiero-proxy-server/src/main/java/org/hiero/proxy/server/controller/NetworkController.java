@@ -37,7 +37,7 @@ public class NetworkController {
         this.networkRepository = Objects.requireNonNull(networkRepository, "networkRepository must not be null");
     }
 
-    // ─── Exchange Rates ───────────────────────────────────────────────────────
+    // Exchange Rates
 
     @GetMapping("/exchange-rates")
     @Operation(
@@ -81,7 +81,7 @@ public class NetworkController {
                         HttpStatus.NOT_FOUND, "Exchange rate data is not available."));
     }
 
-    // ─── Network Fees ─────────────────────────────────────────────────────────
+    // Network Fees
 
     @GetMapping("/fees")
     @Operation(
@@ -118,7 +118,7 @@ public class NetworkController {
         );
     }
 
-    // ─── Network Stake ────────────────────────────────────────────────────────
+    // Network Stake
 
     @GetMapping("/stake")
     @Operation(
@@ -165,7 +165,7 @@ public class NetworkController {
                         HttpStatus.NOT_FOUND, "Network staking data is not available."));
     }
 
-    // ─── Network Supplies ─────────────────────────────────────────────────────
+    // Network Supplies
 
     @GetMapping("/supplies")
     @Operation(

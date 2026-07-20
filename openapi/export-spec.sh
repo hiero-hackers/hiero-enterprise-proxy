@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────────────────────────
-# export-spec.sh — Export the live OpenAPI spec from a running proxy instance.
+# export-spec.sh - Export the live OpenAPI spec from a running proxy instance.
 #
 # Usage:
 #   ./openapi/export-spec.sh [base-url]
 #
 # The proxy must be running (default: http://localhost:8080).
-# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

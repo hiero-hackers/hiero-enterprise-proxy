@@ -1,4 +1,4 @@
-// ─── Account Responses ────────────────────────────────────────────────────────
+// Account Responses
 
 export interface AccountResponse {
   accountId: string;
@@ -23,7 +23,7 @@ export interface SuccessResponse {
   message: string;
 }
 
-// ─── Account Requests ─────────────────────────────────────────────────────────
+// Account Requests
 
 export interface CreateAccountRequest {
   initialBalanceInHbar?: number;
@@ -63,7 +63,7 @@ export interface TransferRequest {
   amountInHbar: number;
 }
 
-// ─── Network Responses ────────────────────────────────────────────────────────
+// Network Responses
 
 export interface ExchangeRate {
   centEquivalent: number;
