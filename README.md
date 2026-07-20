@@ -91,7 +91,7 @@ npm doesn't support installing from a subdirectory of a git repo, so for now use
 git clone https://github.com/hiero-hackers/hiero-enterprise-proxy.git
 cd hiero-enterprise-proxy/clients/javascript
 npm install && npm run build
-npm link
+npm link.
 ```
 
 Then in your project:
