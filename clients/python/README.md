@@ -5,8 +5,10 @@ Python client library for the [Hiero Enterprise Proxy](https://github.com/hiero-
 ## Installation
 
 ```bash
-pip install hiero-enterprise-proxy
+pip install "hiero-enterprise-proxy @ git+https://github.com/hiero-hackers/hiero-enterprise-proxy.git#subdirectory=clients/python"
 ```
+
+> **Coming soon:** `pip install hiero-enterprise-proxy` once published to PyPI.
 
 ## Quick Start
 
@@ -16,16 +18,16 @@ from hiero_proxy import HieroProxyClient
 client = HieroProxyClient(base_url="http://localhost:8080")
 
 # Create an account
-account = client.accounts.create()
-print(account.account_id)
+account = client.accounts.create(initial_balance_in_hbar=10)
+print(account["accountId"])  # 0.0.12345
 
 # Check balance
-balance = client.accounts.get_balance("0.0.123")
-print(balance.balance_hbar)
+balance = client.accounts.get_balance("0.0.12345")
+print(balance["balanceInHbar"])
 
 # Deploy a contract
 contract = client.contracts.deploy(bytecode="0x608060...")
-print(contract.contract_id)
+print(contract["contractId"])
 
 # Query blocks
 blocks = client.blocks.list()
@@ -39,8 +41,8 @@ from hiero_proxy import AsyncHieroProxyClient
 
 async def main():
     async with AsyncHieroProxyClient(base_url="http://localhost:8080") as client:
-        account = await client.accounts.create()
-        print(account.account_id)
+        account = await client.accounts.create(initial_balance_in_hbar=10)
+        print(account["accountId"])
 
 asyncio.run(main())
 ```

@@ -40,34 +40,23 @@ docker run `
 ```bash
 git clone https://github.com/hiero-hackers/hiero-enterprise-proxy.git
 cd hiero-enterprise-proxy
-cp .env.example .env   # add your credentials
+
+# Create a .env file with your credentials
+echo "HEDERA_ACCOUNT_ID=0.0.xxxxx" > .env
+echo "HEDERA_PRIVATE_KEY=your_private_key" >> .env
+echo "HEDERA_NETWORK=hedera-testnet" >> .env
+
 docker compose up
 ```
 </details>
 
 ## Client SDKs
 
-Official client libraries that wrap this proxy — install directly from GitHub:
-
-### JavaScript / TypeScript
-
-```bash
-npm install git+https://github.com/hiero-hackers/hiero-enterprise-proxy.git#main:clients/javascript
-```
-
-```typescript
-import { HieroProxyClient } from "@hiero-hackers/proxy-sdk";
-
-const client = new HieroProxyClient({ baseUrl: "http://localhost:8080" });
-
-const account = await client.accounts.create(10);
-console.log(account.accountId); // 0.0.12345
-
-const token = await client.tokens.create("MyToken", "MTK", 1_000_000);
-await client.tokens.mint(token.tokenId, 500);
-```
+Official client libraries that wrap this proxy. Both SDKs are in this repo and install directly from GitHub — no registry publish yet (npm/PyPI coming soon).
 
 ### Python
+
+Install in one command (Python 3.10+):
 
 ```bash
 pip install "hiero-enterprise-proxy @ git+https://github.com/hiero-hackers/hiero-enterprise-proxy.git#subdirectory=clients/python"
@@ -84,6 +73,46 @@ print(account["accountId"])  # 0.0.12345
 token = client.tokens.create("MyToken", "MTK", 1_000_000)
 client.tokens.mint(token["tokenId"], 500)
 ```
+
+Async is also supported:
+
+```python
+from hiero_proxy import AsyncHieroProxyClient
+
+async with AsyncHieroProxyClient(base_url="http://localhost:8080") as client:
+    info = await client.network.get_exchange_rates()
+```
+
+### JavaScript / TypeScript
+
+npm doesn't support installing from a subdirectory of a git repo, so for now use clone + link (Node 18+):
+
+```bash
+git clone https://github.com/hiero-hackers/hiero-enterprise-proxy.git
+cd hiero-enterprise-proxy/clients/javascript
+npm install && npm run build
+npm link
+```
+
+Then in your project:
+
+```bash
+npm link @hiero-hackers/proxy-sdk
+```
+
+```typescript
+import { HieroProxyClient } from "@hiero-hackers/proxy-sdk";
+
+const client = new HieroProxyClient({ baseUrl: "http://localhost:8080" });
+
+const account = await client.accounts.create(10);
+console.log(account.accountId); // 0.0.12345
+
+const token = await client.tokens.create("MyToken", "MTK", 1_000_000);
+await client.tokens.mint(token.tokenId, 500);
+```
+
+> **Coming soon:** `npm install @hiero-hackers/proxy-sdk` once published to npm.
 
 Both SDKs cover all proxy endpoints: accounts, tokens, NFTs, topics, contracts, files, blocks, and transactions.
 

@@ -121,7 +121,12 @@ client.tokens.mint(token[<span class="c-str">"tokenId"</span>], 500)</pre>
   <p class="section-title">Install the JavaScript SDK</p>
   <div class="code-block">
     <div class="code-header"><span>bash</span><button class="copy-btn" onclick="copy(this,'js-install')">copy</button></div>
-    <pre id="js-install"><span class="c-cmd">npm</span> install git+https://github.com/hiero-hackers/hiero-enterprise-proxy.git#main:clients/javascript</pre>
+    <pre id="js-install"><span class="c-cmd">git</span> clone https://github.com/hiero-hackers/hiero-enterprise-proxy.git
+<span class="c-cmd">cd</span> hiero-enterprise-proxy/clients/javascript
+<span class="c-cmd">npm</span> install &amp;&amp; npm run build &amp;&amp; npm link
+
+<span class="c-comment"># Then in your project:</span>
+<span class="c-cmd">npm</span> link @hiero-hackers/proxy-sdk</pre>
   </div>
 
   <p class="section-title">Use it from JavaScript / TypeScript</p>

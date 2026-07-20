@@ -1,25 +1,37 @@
 # Hiero Enterprise Proxy — SDK Clients
 
-This directory contains auto-generated + hand-written SDK clients for the Hiero Enterprise Proxy API.
+This directory contains official client SDKs for the Hiero Enterprise Proxy API.
 
 ## Available Clients
 
-| Language | Directory | Package | Status |
+| Language | Directory | Package | Install |
 |---|---|---|---|
-| JavaScript/TypeScript | `javascript/` | `@hiero-hackers/proxy-sdk` | Planned |
-| Python | `python/` | `hiero-proxy-sdk` | Planned |
+| Python | `python/` | `hiero-enterprise-proxy` | `pip install "hiero-enterprise-proxy @ git+https://github.com/hiero-hackers/hiero-enterprise-proxy.git#subdirectory=clients/python"` |
+| JavaScript/TypeScript | `javascript/` | `@hiero-hackers/proxy-sdk` | Clone + link (see below) |
 
 ## How it works
 
-1. The proxy server exposes an OpenAPI 3.0 spec at `/v3/api-docs.yaml`.
-2. The spec is committed to `openapi/spec.yaml` as the single source of truth.
-3. Clients are generated from that spec using `openapi/generate.sh`.
-4. A thin handwritten wrapper is added on top for better developer experience.
+1. The proxy server exposes an OpenAPI 3.0 spec at `/v3/api-docs`.
+2. Each SDK is a handwritten, typed wrapper over the proxy's REST endpoints.
+3. Both SDKs cover all 9 resources: accounts, network, tokens, NFTs, topics, contracts, files, blocks, and transactions.
+
+## JavaScript install (clone + link)
+
+npm doesn't support subdirectory git installs, so:
+
+```bash
+git clone https://github.com/hiero-hackers/hiero-enterprise-proxy.git
+cd hiero-enterprise-proxy/clients/javascript
+npm install && npm run build
+npm link
+
+# Then in your project:
+npm link @hiero-hackers/proxy-sdk
+```
 
 ## Contributing a new client
 
-1. Add a new generator target in `openapi/generate.sh`.
-2. Create a `clients/<language>/` directory.
-3. Add generated code to `src/generated/` (auto-generated, do not edit).
-4. Add wrapper code to `src/` (handwritten, reviewable).
-5. Add tests and a README.
+1. Create a `clients/<language>/` directory.
+2. Implement wrappers for the proxy REST endpoints.
+3. Add tests and a README.
+4. Open a PR — sign commits with `git commit -s` (DCO required).
