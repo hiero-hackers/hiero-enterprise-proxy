@@ -8,6 +8,7 @@ export class HieroProxyError extends Error {
 
   constructor(message: string, status: number) {
     super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
     this.name = "HieroProxyError";
     this.status = status;
   }
@@ -19,6 +20,7 @@ export class HieroProxyError extends Error {
 export class ClientError extends HieroProxyError {
   constructor(message: string, status: number) {
     super(message, status);
+    Object.setPrototypeOf(this, new.target.prototype);
     this.name = "ClientError";
   }
 }
@@ -29,6 +31,7 @@ export class ClientError extends HieroProxyError {
 export class ServerError extends HieroProxyError {
   constructor(message: string, status: number) {
     super(message, status);
+    Object.setPrototypeOf(this, new.target.prototype);
     this.name = "ServerError";
   }
 }
@@ -39,6 +42,7 @@ export class ServerError extends HieroProxyError {
 export class NetworkError extends HieroProxyError {
   constructor(message: string) {
     super(message, 0);
+    Object.setPrototypeOf(this, new.target.prototype);
     this.name = "NetworkError";
   }
 }
@@ -46,8 +50,15 @@ export class NetworkError extends HieroProxyError {
 /**
  * Parse a proxy error response body into the appropriate error class.
  */
-export function toProxyError(status: number, body: ProxyErrorBody | string): HieroProxyError {
-  const message = typeof body === "string" ? body : body.message;
+export function toProxyError(status: number, body: ProxyErrorBody | string | unknown): HieroProxyError {
+  let message: string;
+  if (typeof body === "string") {
+    message = body;
+  } else if (body && typeof body === "object" && "message" in body) {
+    message = (body as ProxyErrorBody).message;
+  } else {
+    message = `HTTP ${status}`;
+  }
 
   if (status >= 500) {
     return new ServerError(message, status);

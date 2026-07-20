@@ -1,5 +1,7 @@
 import type { HieroProxyConfig, ResolvedConfig } from "./types";
 import { NetworkError, toProxyError } from "./errors";
+import { AccountsResource } from "./resources/accounts";
+import { NetworkResource } from "./resources/network";
 
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -7,10 +9,16 @@ const DEFAULT_TIMEOUT = 30_000;
  * Core HTTP client for the Hiero Enterprise Proxy.
  *
  * Handles configuration, request execution, and error mapping.
- * Endpoint-specific methods are added in resource modules (accounts, tokens, etc).
+ * Endpoint-specific methods are available via resource properties (accounts, network, etc).
  */
 export class HieroProxyClient {
   private readonly config: ResolvedConfig;
+
+  /** Account operations — create, query, update, delete, transfer. */
+  public readonly accounts: AccountsResource;
+
+  /** Network queries — exchange rates, fees, staking, supply. */
+  public readonly network: NetworkResource;
 
   constructor(config: HieroProxyConfig) {
     const baseUrl = config.baseUrl.replace(/\/+$/, "");
@@ -23,6 +31,9 @@ export class HieroProxyClient {
         ...config.headers,
       },
     };
+
+    this.accounts = new AccountsResource(this);
+    this.network = new NetworkResource(this);
   }
 
   /**
@@ -56,8 +67,8 @@ export class HieroProxyClient {
   /**
    * Execute a DELETE request against the proxy.
    */
-  async delete<T>(path: string): Promise<T> {
-    return this.request<T>("DELETE", path);
+  async delete<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("DELETE", path, body);
   }
 
   /**
@@ -84,7 +95,7 @@ export class HieroProxyClient {
         } catch {
           parsed = errorBody;
         }
-        throw toProxyError(response.status, parsed as string);
+        throw toProxyError(response.status, parsed);
       }
 
       const text = await response.text();
