@@ -1,6 +1,6 @@
 export { HieroProxyClient } from "./client";
 export { HieroProxyError, ClientError, ServerError, NetworkError } from "./errors";
-export { AccountsResource, NetworkResource } from "./resources";
+export { AccountsResource, NetworkResource, TokensResource, NftsResource, TopicsResource } from "./resources";
 export type { HieroProxyConfig, ProxyErrorBody } from "./types";
 export type {
   AccountResponse,
@@ -12,4 +12,20 @@ export type {
   NetworkFeeResponse,
   NetworkStakeResponse,
   NetworkSuppliesResponse,
+  CreateTokenRequest,
+  TokenCreatedResponse,
+  TokenInfoResponse,
+  TokenBalanceResponse,
+  TokenResponse,
+  TokenSupplyResponse,
+  CreateNftTypeRequest,
+  NftTypeCreatedResponse,
+  NftResponse,
+  NftMintedResponse,
+  NftMintedBatchResponse,
+  TopicCreatedResponse,
+  TopicResponse,
+  TopicKeyRotationResponse,
+  TopicUpdatedResponse,
+  TopicMessageResponse,
 } from "./resources";

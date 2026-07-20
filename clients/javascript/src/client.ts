@@ -2,6 +2,9 @@ import type { HieroProxyConfig, ResolvedConfig } from "./types";
 import { NetworkError, toProxyError } from "./errors";
 import { AccountsResource } from "./resources/accounts";
 import { NetworkResource } from "./resources/network";
+import { TokensResource } from "./resources/tokens";
+import { NftsResource } from "./resources/nfts";
+import { TopicsResource } from "./resources/topics";
 
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -20,6 +23,15 @@ export class HieroProxyClient {
   /** Network queries — exchange rates, fees, staking, supply. */
   public readonly network: NetworkResource;
 
+  /** Fungible token operations — create, mint, burn, transfer, associate. */
+  public readonly tokens: TokensResource;
+
+  /** NFT operations — create types, mint, burn, transfer, query instances. */
+  public readonly nfts: NftsResource;
+
+  /** Topic operations — create, submit messages, query, update, delete. */
+  public readonly topics: TopicsResource;
+
   constructor(config: HieroProxyConfig) {
     const baseUrl = config.baseUrl.replace(/\/+$/, "");
     this.config = {
@@ -34,6 +46,9 @@ export class HieroProxyClient {
 
     this.accounts = new AccountsResource(this);
     this.network = new NetworkResource(this);
+    this.tokens = new TokensResource(this);
+    this.nfts = new NftsResource(this);
+    this.topics = new TopicsResource(this);
   }
 
   /**
