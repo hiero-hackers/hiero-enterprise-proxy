@@ -30,7 +30,7 @@ function requireId(value: string, paramName: string): string {
 export class TopicsResource {
   constructor(private readonly client: HieroProxyClient) {}
 
-  // ─── Creation ─────────────────────────────────────────────────────────────
+  // Creation
 
   /**
    * Create a public topic (operator as admin key).
@@ -64,7 +64,7 @@ export class TopicsResource {
     return this.client.post("/api/v1/topics/private/with-admin-key", body);
   }
 
-  // ─── Queries ──────────────────────────────────────────────────────────────
+  // Queries
 
   /**
    * Get topic info from the mirror node.
@@ -74,7 +74,7 @@ export class TopicsResource {
     return this.client.get(`/api/v1/topics/${id}`);
   }
 
-  // ─── Updates ──────────────────────────────────────────────────────────────
+  // Updates
 
   /**
    * Update topic memo.
@@ -112,7 +112,7 @@ export class TopicsResource {
     return this.client.put(`/api/v1/topics/${id}`, body);
   }
 
-  // ─── Deletion ─────────────────────────────────────────────────────────────
+  // Deletion
 
   /**
    * Delete a topic.
@@ -123,7 +123,7 @@ export class TopicsResource {
     return this.client.delete(`/api/v1/topics/${id}`, body);
   }
 
-  // ─── Messages ─────────────────────────────────────────────────────────────
+  // Messages
 
   /**
    * Submit a text message to a topic.

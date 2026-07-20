@@ -1,11 +1,9 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# export-spec.ps1 — Export the live OpenAPI spec from a running proxy instance.
+# export-spec.ps1 - Export the live OpenAPI spec from a running proxy instance.
 #
 # Usage:
 #   .\openapi\export-spec.ps1 [-BaseUrl http://localhost:8080]
 #
 # The proxy must be running.
-# ─────────────────────────────────────────────────────────────────────────────
 param(
     [string]$BaseUrl = "http://localhost:8080"
 )

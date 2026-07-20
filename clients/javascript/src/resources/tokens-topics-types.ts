@@ -1,4 +1,4 @@
-// ─── Fungible Token Types ─────────────────────────────────────────────────────
+// Fungible Token Types
 
 export interface CreateTokenRequest {
   name: string;
@@ -74,7 +74,7 @@ export interface TokenTransferRequest {
   amount: number;
 }
 
-// ─── NFT Types ────────────────────────────────────────────────────────────────
+// NFT Types
 
 export interface CreateNftTypeRequest {
   name: string;
@@ -131,7 +131,7 @@ export interface NftBatchTransferRequest {
   toAccountId: string;
 }
 
-// ─── Topic Types ──────────────────────────────────────────────────────────────
+// Topic Types
 
 export interface TopicCreatedResponse {
   topicId: string;

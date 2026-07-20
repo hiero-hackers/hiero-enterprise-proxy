@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────────────────────────
-# generate.sh — Regenerate SDK clients from the OpenAPI spec.
+# generate.sh - Regenerate SDK clients from the OpenAPI spec.
 #
 # Usage:
 #   ./openapi/generate.sh [js|python|all]
@@ -8,7 +7,6 @@
 # Prerequisites:
 #   - Docker (used to run openapi-generator-cli)
 #   - Or: npm install @openapitools/openapi-generator-cli -g
-# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,14 +16,14 @@ GENERATOR_VERSION="v7.6.0"
 
 TARGET="${1:-all}"
 
-# ─── Validate spec exists ────────────────────────────────────────────────────
+# Validate spec exists
 if [ ! -f "$SPEC_FILE" ]; then
   echo "ERROR: OpenAPI spec not found at $SPEC_FILE"
   echo "Run the proxy server and execute: ./openapi/export-spec.sh"
   exit 1
 fi
 
-# ─── Generator command (prefer Docker for reproducibility) ───────────────────
+# Generator command (prefer Docker for reproducibility)
 generate() {
   local language="$1"
   local output_dir="$2"
@@ -46,19 +44,19 @@ generate() {
   echo "✓ $language client generated."
 }
 
-# ─── JavaScript/TypeScript ───────────────────────────────────────────────────
+# JavaScript/TypeScript
 generate_js() {
   generate "JavaScript/TypeScript" "clients/javascript/src/generated" "typescript-fetch" \
     "--additional-properties=supportsES6=true,npmName=@hiero-hackers/proxy-sdk,npmVersion=1.0.0"
 }
 
-# ─── Python ──────────────────────────────────────────────────────────────────
+# Python
 generate_python() {
   generate "Python" "clients/python/src/hiero_proxy/generated" "python" \
     "--additional-properties=packageName=hiero_proxy.generated,projectName=hiero-proxy-sdk,packageVersion=1.0.0"
 }
 
-# ─── Main ────────────────────────────────────────────────────────────────────
+# Main
 case "$TARGET" in
   js|javascript)
     generate_js

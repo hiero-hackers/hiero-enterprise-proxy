@@ -37,7 +37,7 @@ public class BlockController {
         this.blockRepository = Objects.requireNonNull(blockRepository, "blockRepository must not be null");
     }
 
-    // ─── List ─────────────────────────────────────────────────────────────────
+    // List
 
     @GetMapping
     @Operation(
@@ -82,7 +82,7 @@ public class BlockController {
         );
     }
 
-    // ─── Get by Number ────────────────────────────────────────────────────────
+    // Get by Number
 
     @GetMapping("/number/{number}")
     @Operation(
@@ -136,7 +136,7 @@ public class BlockController {
                         HttpStatus.NOT_FOUND, "Block not found: number=" + number));
     }
 
-    // ─── Get by Hash ──────────────────────────────────────────────────────────
+    // Get by Hash
 
     @GetMapping("/hash/{hash}")
     @Operation(

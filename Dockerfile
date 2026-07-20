@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# ─── Stage 1: Build ──────────────────────────────────────────────────────────
+# Stage 1: Build
 FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /workspace
@@ -22,7 +22,7 @@ RUN ./mvnw dependency:go-offline -pl hiero-proxy-server -am -q
 COPY hiero-proxy-server/src hiero-proxy-server/src
 RUN ./mvnw package -pl hiero-proxy-server -am -DskipTests -q
 
-# ─── Stage 2: Runtime ────────────────────────────────────────────────────────
+# Stage 2: Runtime
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
 # Non-root user for security

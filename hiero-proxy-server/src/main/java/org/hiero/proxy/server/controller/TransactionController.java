@@ -43,7 +43,7 @@ public class TransactionController {
                 transactionRepository, "transactionRepository must not be null");
     }
 
-    // ─── Get by ID ────────────────────────────────────────────────────────────
+    // Get by ID
 
     @GetMapping("/{transactionId}")
     @Operation(
@@ -103,7 +103,7 @@ public class TransactionController {
                         HttpStatus.NOT_FOUND, "Transaction not found: " + transactionId));
     }
 
-    // ─── List by Account ──────────────────────────────────────────────────────
+    // List by Account
 
     @GetMapping("/account/{accountId}")
     @Operation(

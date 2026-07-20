@@ -1,6 +1,6 @@
 name: Build & Publish Docker Image
 
-# ── Triggers ──────────────────────────────────────────────────────────────────
+# Triggers
 on:
   push:
     branches:
@@ -11,13 +11,12 @@ on:
     branches:
       - main          # build-only (no push) on PRs to catch Dockerfile regressions
 
-# ── Permissions ───────────────────────────────────────────────────────────────
-# ghcr.io publishing requires write access to packages.
+# Permissions — ghcr.io publishing requires write access to packages.
 permissions:
   contents: read
   packages: write
 
-# ── Jobs ──────────────────────────────────────────────────────────────────────
+# Jobs
 jobs:
   build-and-push:
     name: Build & Push

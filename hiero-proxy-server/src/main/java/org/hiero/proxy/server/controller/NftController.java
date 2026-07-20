@@ -56,7 +56,7 @@ public class NftController {
         this.nftRepository = Objects.requireNonNull(nftRepository, "nftRepository must not be null");
     }
 
-    // ─── NFT Type Creation ───────────────────────────────────────────────────
+    // NFT Type Creation
 
     @PostMapping
     @Operation(
@@ -123,7 +123,7 @@ public class NftController {
         return ResponseEntity.status(HttpStatus.CREATED).body(NftTypeCreatedResponse.of(tokenId));
     }
 
-    // ─── NFT Instance Queries (mirror node) ─────────────────────────────────
+    // NFT Instance Queries (mirror node)
 
     @GetMapping("/{tokenId}/instances")
     @Operation(
@@ -255,7 +255,7 @@ public class NftController {
         );
     }
 
-    // ─── Associate / Dissociate ───────────────────────────────────────────────
+    // Associate / Dissociate
 
     @PostMapping("/{tokenId}/associate")
     @Operation(
@@ -413,7 +413,7 @@ public class NftController {
                 "Account " + request.accountId() + " dissociated from " + tokenIds.size() + " NFT types successfully."));
     }
 
-    // ─── Mint ────────────────────────────────────────────────────────────────
+    // Mint
 
     @PostMapping("/{tokenId}/mint")
     @Operation(
@@ -527,7 +527,7 @@ public class NftController {
         return ResponseEntity.status(HttpStatus.CREATED).body(NftMintedBatchResponse.of(serialNumbers));
     }
 
-    // ─── Burn ────────────────────────────────────────────────────────────────
+    // Burn
 
     @PostMapping("/{tokenId}/burn")
     @Operation(
@@ -578,7 +578,7 @@ public class NftController {
                 "NFT(s) " + request.serialNumbers() + " of type " + tokenId + " burned successfully."));
     }
 
-    // ─── Transfer ────────────────────────────────────────────────────────────
+    // Transfer
 
     @PostMapping("/{tokenId}/transfer/{serialNumber}")
     @Operation(
