@@ -1,0 +1,4561 @@
+openapi: 3.0.1
+info:
+  title: Hiero Enterprise Proxy API
+  description: Core API specification for managing account infrastructure and transaction
+    proxy flows.
+  contact:
+    name: Engineering Team
+  version: v1.0.0
+servers:
+- url: http://localhost:8080
+  description: Local Development Environment
+tags:
+- name: Accounts
+  description: Operations for managing accounts on a Hiero network
+- name: Accounts
+- name: Topics
+- name: Topics
+  description: Operations for managing topics on a Hiero network
+- name: Fungible Tokens
+  description: Operations for managing fungible tokens (HTS) on a Hiero network
+- name: Fungible Tokens
+- name: NFTs
+- name: NFTs
+  description: Operations for managing Non-Fungible Tokens (HTS NFTs) on a Hiero network
+- name: Network
+- name: Network
+  description: "Read-only operations for querying Hiero network information — exchange\
+    \ rates, transaction fees, staking statistics, and HBAR supply figures. All data\
+    \ is sourced from the Hiero mirror node."
+- name: Blocks
+- name: Blocks
+  description: Read-only operations for querying Hiero network blocks from the mirror
+    node. Blocks can be looked up by their sequential number or by their EVM-compatible
+    hash.
+- name: Transactions
+  description: "Read-only operations for querying Hiero transactions from the mirror\
+    \ node. Transactions can be looked up by ID or filtered by account with optional\
+    \ type, result, and balance-modification filters."
+- name: Transactions
+- name: Files
+  description: "Operations for managing files on the Hiero File Service (HFS). HFS\
+    \ files can store arbitrary byte content on the ledger — smart contract bytecode,\
+    \ metadata, configuration, and more. All content is exchanged as Base64-encoded\
+    \ strings."
+- name: Files
+- name: Smart Contracts
+  description: "Operations for deploying and interacting with smart contracts on the\
+    \ Hiero network, as well as querying contract information from the mirror node."
+- name: Hooks
+  description: Operations for managing transaction hooks on the Hiero network.
+paths:
+  /api/v1/accounts:
+    post:
+      tags:
+      - Accounts
+      summary: Create a new account
+      description: Creates a new Hedera account on the ledger. Provide an optional
+        request body to fund the account with an initial HBAR balance; omit the body
+        to create with 0 HBAR. Transaction fees are paid by the operator account configured
+        in the proxy server.
+      operationId: createAccount
+      requestBody:
+        description: Optional initial balance. Omit to create with 0 HBAR.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+            example:
+              initialBalanceInHbar: 10
+      responses:
+        "500":
+          description: Account could not be created on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "400":
+          description: Invalid initial balance (e.g. negative value).
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: Account created successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+              example:
+                accountId: 0.0.12345
+                publicKey: 302a300506032b6570032100aabbccddeeff...
+                privateKey: 302e020100300506032b657004220420aabbcc...
+  /api/v1/accounts/{accountId}/balance:
+    get:
+      tags:
+      - Accounts
+      summary: Get account balance
+      description: Fetches the current HBAR balance of the specified account directly
+        from the Hiero consensus node.
+      operationId: getBalance
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      responses:
+        "500":
+          description: Could not retrieve balance.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Balance retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+              example:
+                accountId: 0.0.12345
+                balanceHbar: 10 ℏ
+  /api/v1/accounts/operator/balance:
+    get:
+      tags:
+      - Accounts
+      summary: Get operator balance
+      description: Fetches the current HBAR balance of the proxy operator account.
+      operationId: getOperatorBalance
+      responses:
+        "500":
+          description: Could not retrieve operator balance.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Balance retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+              example:
+                accountId: operator
+                balanceHbar: 1000 ℏ
+  /api/v1/accounts/{accountId}/info:
+    get:
+      tags:
+      - Accounts
+      summary: Get account info
+      description: "Fetches detailed account information from the Hiero mirror node,\
+        \ including EVM address, balance in tinybars, Ethereum nonce, and pending\
+        \ staking reward."
+      operationId: getAccountInfo
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      responses:
+        "500":
+          description: Could not retrieve account info.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Account not found on the mirror node.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Account info retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AccountInfoResponse'
+              example:
+                accountId: 0.0.12345
+                evmAddress: 0x00000000000000000000000000000000000030d9
+                balanceTinybars: 1000000000
+                ethereumNonce: 0
+                pendingRewardTinybars: 5000000
+  /api/v1/accounts/{accountId}/key:
+    put:
+      tags:
+      - Accounts
+      summary: Update account key
+      description: Replaces the key pair of the specified account with a new private
+        key. The current private key is required to authorise the transaction.
+      operationId: updateKey
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      requestBody:
+        description: Current private key to authorise the rotation. A fresh key pair
+          is generated server-side and returned.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateKeyRequest'
+            example:
+              currentPrivateKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "200":
+          description: Key updated successfully. Returns the account with its new
+            key pair.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+              example:
+                accountId: 0.0.12345
+                publicKey: 302a300506032b6570032100ddeeff...
+                privateKey: 302e020100300506032b657004220420ddeeff...
+        "500":
+          description: Key could not be updated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/accounts/{accountId}/memo:
+    put:
+      tags:
+      - Accounts
+      summary: Update account memo
+      description: Updates the memo field of the specified account. The account's
+        current private key is required to authorise the transaction.
+      operationId: updateMemo
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      requestBody:
+        description: Private key and new memo value.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemoRequest'
+            example:
+              privateKey: 302e020100300506032b657004220420aabbcc...
+              memo: Updated enterprise account memo
+        required: true
+      responses:
+        "200":
+          description: Memo updated successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account memo updated successfully.
+        "500":
+          description: Memo could not be updated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/accounts/{accountId}:
+    put:
+      tags:
+      - Accounts
+      summary: Update account key and memo
+      description: Updates both the key pair and memo of the specified account in
+        a single network transaction. More efficient than calling the key and memo
+        endpoints separately.
+      operationId: updateAccount
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      requestBody:
+        description: Current private key and new memo. A fresh key pair is generated
+          server-side and returned.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountRequest'
+            example:
+              currentPrivateKey: 302e020100300506032b657004220420aabbcc...
+              memo: Updated enterprise account
+        required: true
+      responses:
+        "200":
+          description: Account updated successfully. Returns the account with its
+            new key pair.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+              example:
+                accountId: 0.0.12345
+                publicKey: 302a300506032b6570032100ddeeff...
+                privateKey: 302e020100300506032b657004220420ddeeff...
+        "500":
+          description: Account could not be updated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Accounts
+      summary: Delete account
+      description: Deletes the specified account from the ledger. Any remaining balance
+        is automatically transferred to the proxy operator account.
+      operationId: deleteAccount
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID to delete.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      requestBody:
+        description: Private key of the account to be deleted.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+            example:
+              privateKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "500":
+          description: Account could not be deleted.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Account deleted successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 deleted successfully. Remaining balance
+                  transferred to operator.
+  /api/v1/accounts/transfer:
+    post:
+      tags:
+      - Accounts
+      summary: Transfer HBAR from operator
+      description: Transfers HBAR from the proxy operator account to a target account.
+        The operator's private key is used automatically — no key is required in the
+        request.
+      operationId: operatorTransfer
+      requestBody:
+        description: Target account ID and amount to transfer.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperatorTransferRequest'
+            example:
+              toAccountId: 0.0.98765
+              amountInHbar: 100
+        required: true
+      responses:
+        "500":
+          description: Transfer could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Transfer completed successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Successfully transferred 100 HBAR from operator to 0.0.98765.
+  /api/v1/accounts/{accountId}/transfer:
+    post:
+      tags:
+      - Accounts
+      summary: Transfer HBAR between accounts
+      description: Transfers HBAR from the specified account to a target account.
+        The sender's private key is required to sign the transaction.
+      operationId: transfer
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID of the sender.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      requestBody:
+        description: "Sender's private key, recipient account ID, and amount."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+            example:
+              fromAccountPrivateKey: 302e020100300506032b657004220420aabbcc...
+              toAccountId: 0.0.98765
+              amountInHbar: 50
+        required: true
+      responses:
+        "500":
+          description: Transfer could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Transfer completed successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Successfully transferred 50 HBAR from 0.0.12345 to 0.0.98765.
+  /api/v1/accounts/{accountId}/to/{recipientAccountId}:
+    delete:
+      tags:
+      - Accounts
+      summary: Delete account and transfer balance to recipient
+      description: Deletes the specified account from the ledger and transfers any
+        remaining balance to the specified recipient account instead of the operator.
+      operationId: deleteAccountToRecipient
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID to delete.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      - name: recipientAccountId
+        in: path
+        description: The Hedera account ID that receives the remaining balance.
+        required: true
+        schema:
+          type: string
+        example: 0.0.98765
+      requestBody:
+        description: Private keys of both the account being deleted and the recipient.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountToRecipientRequest'
+            example:
+              accountPrivateKey: 302e020100300506032b657004220420aabbcc...
+              recipientPrivateKey: 302e020100300506032b657004220420ddeeff...
+        required: true
+      responses:
+        "500":
+          description: Account could not be deleted.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Account deleted and balance transferred successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 deleted successfully. Remaining balance
+                  transferred to 0.0.98765.
+  /api/v1/topics:
+    post:
+      tags:
+      - Topics
+      summary: Create a public topic
+      description: Creates a new public topic on the Hiero network. The operator account
+        is used as the admin key. An optional memo can be provided in the request
+        body; omit the body to create a topic with no memo.
+      operationId: createTopic
+      requestBody:
+        description: Optional memo for the topic. Omit body or leave memo null to
+          create with no memo.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopicRequest'
+            example:
+              memo: Enterprise event bus topic
+      responses:
+        "500":
+          description: Topic could not be created on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: Topic created successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicCreatedResponse'
+              example:
+                topicId: 0.0.55001
+                submitPrivateKey: null
+                submitPublicKey: null
+  /api/v1/topics/private:
+    post:
+      tags:
+      - Topics
+      summary: Create a private topic
+      description: Creates a new private topic on the Hiero network. The server generates
+        a fresh ED25519 submit key and returns it in the response — save it securely.
+        The operator account is used as the admin key. Messages can only be submitted
+        using the returned submit key.
+      operationId: createPrivateTopic
+      requestBody:
+        description: Optional memo for the private topic.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrivateTopicRequest'
+            example:
+              memo: Private enterprise channel
+      responses:
+        "500":
+          description: Topic could not be created on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: Private topic created successfully. The submit key pair is
+            included in the response.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicCreatedResponse'
+              example:
+                topicId: 0.0.55002
+                submitPrivateKey: 302e020100300506032b657004220420ddeeff...
+                submitPublicKey: 302a300506032b6570032100ddeeff...
+  /api/v1/topics/with-admin-key:
+    post:
+      tags:
+      - Topics
+      summary: Create a public topic with a custom admin key
+      description: Creates a new public topic on the Hiero network using the provided
+        private key as the admin key. Use this when you want to control the topic
+        with a key other than the operator key.
+      operationId: createTopicWithAdminKey
+      requestBody:
+        description: Custom admin key and optional memo.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopicWithAdminKeyRequest'
+            example:
+              adminPrivateKey: 302e020100300506032b657004220420aabbcc...
+              memo: Enterprise audit log topic
+        required: true
+      responses:
+        "500":
+          description: Topic could not be created on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: Topic created successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicCreatedResponse'
+              example:
+                topicId: 0.0.55003
+                submitPrivateKey: null
+                submitPublicKey: null
+  /api/v1/topics/private/with-admin-key:
+    post:
+      tags:
+      - Topics
+      summary: Create a private topic with a custom admin key
+      description: Creates a new private topic using the provided private key as the
+        admin key. The server generates a fresh ED25519 submit key and returns it
+        in the response — save it securely.
+      operationId: createPrivateTopicWithAdminKey
+      requestBody:
+        description: Custom admin key and optional memo. Server generates the submit
+          key.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrivateTopicWithAdminKeyRequest'
+            example:
+              adminPrivateKey: 302e020100300506032b657004220420aabbcc...
+              memo: Private enterprise channel
+        required: true
+      responses:
+        "500":
+          description: Topic could not be created on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: Private topic created successfully. The submit key pair is
+            included in the response.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicCreatedResponse'
+              example:
+                topicId: 0.0.55004
+                submitPrivateKey: 302e020100300506032b657004220420ddeeff...
+                submitPublicKey: 302a300506032b6570032100ddeeff...
+  /api/v1/topics/{topicId}/messages:
+    get:
+      tags:
+      - Topics
+      summary: Get all messages for a topic
+      description: Retrieves all messages submitted to the specified topic from the
+        Hiero mirror node. Returns an empty list if no messages have been submitted
+        yet.
+      operationId: getMessages
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      responses:
+        "500":
+          description: Could not retrieve messages.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Messages retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicMessageResponse'
+              example:
+              - topicId: 0.0.55001
+                sequenceNumber: 1
+                message: "Hello, Hiero network!"
+                consensusTimestamp: 2024-01-15T10:31:00Z
+                payerAccountId: 0.0.12345
+                runningHashBase64: d2VsbGNvbWUgdG8gaGllcm8=
+                runningHashVersion: 3
+                chunked: false
+    post:
+      tags:
+      - Topics
+      summary: Submit a message to a topic
+      description: "Submits a text message to the specified topic. For public topics\
+        \ no submit key is needed. For private topics, provide the submit private\
+        \ key in the request body."
+      operationId: submitMessage
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Message content and optional submit key for private topics.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitMessageRequest'
+            example:
+              message: "Hello, Hiero network!"
+              submitKey: null
+        required: true
+      responses:
+        "200":
+          description: Message submitted successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Message submitted to topic 0.0.55001 successfully.
+        "500":
+          description: Message could not be submitted.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/topics/{topicId}/messages/binary:
+    post:
+      tags:
+      - Topics
+      summary: Submit a binary message to a topic
+      description: "Submits a binary message to the specified topic. The message must\
+        \ be provided as a Base64-encoded string. Use this for structured binary payloads\
+        \ such as serialised Protobuf. For private topics, provide the submit private\
+        \ key in the request body."
+      operationId: submitBinaryMessage
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Base64-encoded binary message and optional submit key for private
+          topics.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitBinaryMessageRequest'
+            example:
+              messageBase64: SGVsbG8sIEhpZXJvIG5ldHdvcmsh
+              submitKey: null
+        required: true
+      responses:
+        "200":
+          description: Binary message submitted successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Binary message submitted to topic 0.0.55001 successfully.
+        "400":
+          description: The provided messageBase64 is not valid Base64.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Binary message could not be submitted.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/topics/{topicId}/messages/{sequenceNumber}:
+    get:
+      tags:
+      - Topics
+      summary: Get a specific message by sequence number
+      description: Retrieves a single message from the specified topic by its sequence
+        number from the Hiero mirror node.
+      operationId: getMessageBySequenceNumber
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      - name: sequenceNumber
+        in: path
+        description: The sequence number of the message.
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 42
+      responses:
+        "404":
+          description: Message not found for the given topic and sequence number.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Message retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicMessageResponse'
+              example:
+                topicId: 0.0.55001
+                sequenceNumber: 42
+                message: "Hello, Hiero network!"
+                consensusTimestamp: 2024-01-15T10:31:00Z
+                payerAccountId: 0.0.12345
+                runningHashBase64: d2VsbGNvbWUgdG8gaGllcm8=
+                runningHashVersion: 3
+                chunked: false
+        "500":
+          description: Could not retrieve message.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/topics/{topicId}/memo:
+    put:
+      tags:
+      - Topics
+      summary: Update topic memo
+      description: Updates the memo field of the specified topic. The topic's admin
+        private key is required to authorise the transaction.
+      operationId: updateTopicMemo
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Admin private key and new memo value.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTopicMemoRequest'
+            example:
+              adminPrivateKey: 302e020100300506032b657004220420aabbcc...
+              memo: Updated enterprise event bus topic
+        required: true
+      responses:
+        "200":
+          description: Memo updated successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Topic memo updated successfully.
+        "500":
+          description: Memo could not be updated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/topics/{topicId}/admin-key:
+    put:
+      tags:
+      - Topics
+      summary: Rotate topic admin key
+      description: Replaces the admin key of the specified topic with a newly generated
+        ED25519 key pair. The current admin private key is required to authorise the
+        rotation. The new key pair is generated server-side and returned — save it
+        securely.
+      operationId: updateAdminKey
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Current admin private key to authorise the rotation. A fresh
+          key pair is generated server-side and returned.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTopicKeyRequest'
+            example:
+              adminPrivateKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "200":
+          description: Admin key rotated successfully. Returns the new key pair.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicKeyRotationResponse'
+              example:
+                topicId: 0.0.55001
+                newPrivateKey: 302e020100300506032b657004220420ddeeff...
+                newPublicKey: 302a300506032b6570032100ddeeff...
+        "500":
+          description: Admin key could not be rotated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/topics/{topicId}/submit-key:
+    put:
+      tags:
+      - Topics
+      summary: Rotate topic submit key
+      description: Replaces the submit key of the specified private topic with a newly
+        generated ED25519 key pair. The current admin private key is required to authorise
+        the rotation. The new key pair is generated server-side and returned — save
+        it securely.
+      operationId: updateSubmitKey
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55002
+      requestBody:
+        description: Current admin private key to authorise the rotation. A fresh
+          submit key pair is generated server-side and returned.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTopicKeyRequest'
+            example:
+              adminPrivateKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "200":
+          description: Submit key rotated successfully. Returns the new key pair.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicKeyRotationResponse'
+              example:
+                topicId: 0.0.55002
+                newPrivateKey: 302e020100300506032b657004220420ddeeff...
+                newPublicKey: 302a300506032b6570032100ddeeff...
+        "500":
+          description: Submit key could not be rotated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/topics/{topicId}:
+    get:
+      tags:
+      - Topics
+      summary: Get topic info
+      description: "Fetches detailed topic information from the Hiero mirror node,\
+        \ including memo, deletion status, creation timestamp, auto-renew period,\
+        \ and whether admin/submit keys are configured."
+      operationId: getTopicInfo
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      responses:
+        "200":
+          description: Topic info retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicResponse'
+              example:
+                topicId: 0.0.55001
+                memo: Enterprise event bus topic
+                deleted: false
+                createdTimestamp: 2024-01-15T10:30:00Z
+                autoRenewPeriod: 7776000
+                hasAdminKey: true
+                hasSubmitKey: false
+        "404":
+          description: Topic not found on the mirror node.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Could not retrieve topic info.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Topics
+      summary: "Update topic admin key, submit key, and memo"
+      description: "Atomically rotates both the admin key and the submit key of the\
+        \ specified topic and updates the memo, all in a single network transaction.\
+        \ Both new key pairs are generated server-side and returned — save them securely."
+      operationId: updateTopic
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55002
+      requestBody:
+        description: Current admin key and new memo. Fresh admin and submit key pairs
+          are generated server-side.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTopicRequest'
+            example:
+              currentAdminPrivateKey: 302e020100300506032b657004220420aabbcc...
+              memo: Updated enterprise event bus
+        required: true
+      responses:
+        "200":
+          description: Topic updated successfully. Returns both new key pairs.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TopicUpdatedResponse'
+              example:
+                topicId: 0.0.55002
+                newAdminPrivateKey: 302e020100300506032b657004220420aabbcc...
+                newAdminPublicKey: 302a300506032b6570032100aabbcc...
+                newSubmitPrivateKey: 302e020100300506032b657004220420ddeeff...
+                newSubmitPublicKey: 302a300506032b6570032100ddeeff...
+                memo: Updated enterprise event bus
+        "500":
+          description: Topic could not be updated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Topics
+      summary: Delete a topic
+      description: Permanently deletes the specified topic from the Hiero network.
+        The topic's admin private key is required to authorise the deletion.
+      operationId: deleteTopic
+      parameters:
+      - name: topicId
+        in: path
+        description: The Hiero topic ID to delete.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Admin private key of the topic to authorise the deletion.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteTopicRequest'
+            example:
+              adminPrivateKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "200":
+          description: Topic deleted successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Topic 0.0.55001 deleted successfully.
+        "500":
+          description: Topic could not be deleted.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/files:
+    post:
+      tags:
+      - Files
+      summary: Create a file
+      description: "Creates a new file on the Hiero File Service (HFS) with the provided\
+        \ content. Content must be Base64-encoded. The operator account pays the transaction\
+        \ fee and becomes the file owner. Optionally provide an `expirationTimeEpochSecond`\
+        \ to set when the file auto-deletes; if omitted, the network default expiry\
+        \ (~90 days) is used. Large files (> 4 KB) are automatically split across\
+        \ multiple transactions."
+      operationId: createFile
+      requestBody:
+        description: Base64-encoded file content and optional expiration time.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFileRequest'
+            example:
+              contents: SGVsbG8gSGllcm8h
+        required: true
+      responses:
+        "500":
+          description: File could not be created on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: File created successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FileCreatedResponse'
+              example:
+                fileId: 0.0.77001
+        "400":
+          description: "Contents are missing, blank, or not valid Base64."
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/files/{fileId}:
+    get:
+      tags:
+      - Files
+      summary: Get file info
+      description: "Returns metadata for an HFS file: size in bytes, deletion status,\
+        \ and expiration time. Does not return the file contents."
+      operationId: getFileInfo
+      parameters:
+      - name: fileId
+        in: path
+        description: The Hedera file ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.77001
+      responses:
+        "500":
+          description: Could not retrieve file info.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: File info retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FileInfoResponse'
+              example:
+                fileId: 0.0.77001
+                size: 16
+                deleted: false
+                expirationTimeEpochSecond: 1800000000
+    delete:
+      tags:
+      - Files
+      summary: Delete a file
+      description: Permanently deletes an HFS file from the Hiero network. The operator
+        account must be the file owner to authorise this operation.
+      operationId: deleteFile
+      parameters:
+      - name: fileId
+        in: path
+        description: The Hedera file ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.77001
+      responses:
+        "500":
+          description: File could not be deleted.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: File deleted successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: File 0.0.77001 deleted successfully.
+  /api/v1/files/{fileId}/contents:
+    get:
+      tags:
+      - Files
+      summary: Read file contents
+      description: Reads and returns the raw contents of an HFS file as a Base64-encoded
+        string.
+      operationId: readFile
+      parameters:
+      - name: fileId
+        in: path
+        description: The Hedera file ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.77001
+      responses:
+        "200":
+          description: File contents retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FileContentsResponse'
+              example:
+                fileId: 0.0.77001
+                contents: SGVsbG8gSGllcm8h
+        "500":
+          description: Could not read file contents.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Files
+      summary: Update file contents
+      description: Fully replaces the contents of an existing HFS file with new Base64-encoded
+        content. Large content (> 4 KB) is automatically split across multiple append
+        transactions.
+      operationId: updateFileContents
+      parameters:
+      - name: fileId
+        in: path
+        description: The Hedera file ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.77001
+      requestBody:
+        description: New Base64-encoded file content.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFileRequest'
+            example:
+              contents: VXBkYXRlZCBjb250ZW50
+        required: true
+      responses:
+        "200":
+          description: File contents updated successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: File 0.0.77001 contents updated successfully.
+        "400":
+          description: "Contents are missing, blank, or not valid Base64."
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: File could not be updated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/files/{fileId}/expiration:
+    put:
+      tags:
+      - Files
+      summary: Update file expiration time
+      description: Sets a new expiration time for an existing HFS file. The new time
+        must be in the future. When a file expires it is automatically deleted from
+        the network.
+      operationId: updateFileExpiration
+      parameters:
+      - name: fileId
+        in: path
+        description: The Hedera file ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.77001
+      requestBody:
+        description: New expiration time as a Unix epoch second.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFileExpirationRequest'
+            example:
+              expirationTimeEpochSecond: 1900000000
+        required: true
+      responses:
+        "400":
+          description: Expiration time is in the past.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: File expiration time could not be updated.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: File expiration time updated successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: File 0.0.77001 expiration time updated successfully.
+  /api/v1/tokens:
+    post:
+      tags:
+      - Fungible Tokens
+      summary: Create a fungible token
+      description: "Creates a new fungible token on the Hiero Token Service (HTS).\
+        \ The operator account is used as treasury and supply account by default.\
+        \ Provide optional `treasuryAccountId` + `treasuryKey` to use a custom treasury\
+        \ account, and/or `supplyKey` to use a custom supply key for future mint/burn\
+        \ operations."
+      operationId: createToken
+      requestBody:
+        description: Token definition. Only `name` and `symbol` are required; all
+          key fields are optional.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTokenRequest'
+            example:
+              name: My Enterprise Token
+              symbol: MET
+        required: true
+      responses:
+        "500":
+          description: Token could not be created on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: Token created successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenCreatedResponse'
+              example:
+                tokenId: 0.0.55001
+        "400":
+          description: Invalid request — name or symbol is missing.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/tokens/{tokenId}/transfer:
+    post:
+      tags:
+      - Fungible Tokens
+      summary: Transfer tokens from operator
+      description: Transfers fungible token units from the proxy operator account
+        to a target account. The operator's key is used automatically — no key is
+        required in the request. The recipient account must already be associated
+        with this token.
+      operationId: transferFromOperator
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Recipient account ID and amount to transfer.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenOperatorTransferRequest'
+            example:
+              toAccountId: 0.0.98765
+              amount: 250
+        required: true
+      responses:
+        "200":
+          description: Transfer completed successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Successfully transferred 250 units of 0.0.55001 from operator
+                  to 0.0.98765.
+        "500":
+          description: Transfer could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "400":
+          description: Invalid transfer amount (must be > 0).
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/tokens/{tokenId}/transfer/{fromAccountId}:
+    post:
+      tags:
+      - Fungible Tokens
+      summary: Transfer tokens between accounts
+      description: Transfers fungible token units from the specified sender account
+        to a target account. The sender's private key is required to sign the transaction.
+        Both accounts must already be associated with this token.
+      operationId: transferBetweenAccounts
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      - name: fromAccountId
+        in: path
+        description: The Hedera account ID of the sender.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      requestBody:
+        description: "Sender's private key, recipient account ID, and amount."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenTransferRequest'
+            example:
+              fromAccountKey: 302e020100300506032b657004220420aabbcc...
+              toAccountId: 0.0.98765
+              amount: 100
+        required: true
+      responses:
+        "500":
+          description: Transfer could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "400":
+          description: Invalid transfer amount (must be > 0).
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Transfer completed successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Successfully transferred 100 units of 0.0.55001 from 0.0.12345
+                  to 0.0.98765.
+  /api/v1/tokens/{tokenId}/mint:
+    post:
+      tags:
+      - Fungible Tokens
+      summary: Mint token units
+      description: Mints new units of a fungible token and adds them to the treasury
+        account's balance. Omit `supplyKey` if the operator account is the supply
+        account.
+      operationId: mintToken
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Amount to mint and optional supply key.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MintTokenRequest'
+            example:
+              amount: 1000
+        required: true
+      responses:
+        "500":
+          description: Mint operation failed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Tokens minted successfully. Returns the updated total supply.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenSupplyResponse'
+              example:
+                totalSupply: 6000
+        "400":
+          description: Invalid mint amount (must be > 0).
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/tokens/{tokenId}/burn:
+    post:
+      tags:
+      - Fungible Tokens
+      summary: Burn token units
+      description: Permanently removes fungible token units from the treasury account's
+        balance. Omit `supplyKey` if the operator account is the supply account.
+      operationId: burnToken
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Amount to burn and optional supply key.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BurnTokenRequest'
+            example:
+              amount: 500
+        required: true
+      responses:
+        "200":
+          description: Tokens burned successfully. Returns the updated total supply.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenSupplyResponse'
+              example:
+                totalSupply: 4500
+        "500":
+          description: Burn operation failed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "400":
+          description: Invalid burn amount (must be > 0).
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/tokens/{tokenId}/associate:
+    post:
+      tags:
+      - Fungible Tokens
+      summary: Associate account with token
+      description: Associates a Hedera account with this token so it can hold and
+        receive token units. An account must be associated before it can receive a
+        transfer of this token.
+      operationId: associateToken
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Account ID and private key to authorise the association.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenAssociateRequest'
+            example:
+              accountId: 0.0.12345
+              accountKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "500":
+          description: Association could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Account associated with token successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 associated with token 0.0.55001 successfully.
+    delete:
+      tags:
+      - Fungible Tokens
+      summary: Dissociate account from token
+      description: Removes the association between a Hedera account and this token.
+        The account's token balance must be zero before dissociating.
+      operationId: dissociateToken
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      requestBody:
+        description: Account ID and private key to authorise the dissociation.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenAssociateRequest'
+            example:
+              accountId: 0.0.12345
+              accountKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "500":
+          description: Dissociation could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Account dissociated from token successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 dissociated from token 0.0.55001 successfully.
+  /api/v1/tokens/associate:
+    post:
+      tags:
+      - Fungible Tokens
+      summary: Batch associate account with multiple tokens
+      description: Associates a Hedera account with multiple tokens at once so it
+        can hold and receive token units.
+      operationId: batchAssociateTokens
+      requestBody:
+        description: "List of Token IDs, Account ID, and private key to authorise\
+          \ the association."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenBatchAssociateRequest'
+            example:
+              tokenIds:
+              - 0.0.55001
+              - 0.0.55002
+              accountId: 0.0.12345
+              accountKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "200":
+          description: Account associated with tokens successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 associated with 2 tokens successfully.
+        "500":
+          description: Association could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Fungible Tokens
+      summary: Batch dissociate account from multiple tokens
+      description: Removes the association between a Hedera account and multiple tokens
+        at once.
+      operationId: batchDissociateTokens
+      requestBody:
+        description: "List of Token IDs, Account ID, and private key to authorise\
+          \ the dissociation."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenBatchAssociateRequest'
+            example:
+              tokenIds:
+              - 0.0.55001
+              - 0.0.55002
+              accountId: 0.0.12345
+              accountKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "500":
+          description: Dissociation could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Account dissociated from tokens successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 dissociated from 2 tokens successfully.
+  /api/v1/nfts:
+    post:
+      tags:
+      - NFTs
+      summary: Create an NFT token type
+      description: "Creates a new NFT token type on the Hiero Token Service (HTS).\
+        \ The operator account is used as both treasury and supply account by default.\
+        \ Provide optional `treasuryAccountId` + `treasuryKey` to use a custom treasury,\
+        \ and/or `supplierKey` to use a custom key for future mint/burn operations."
+      operationId: createNftType
+      requestBody:
+        description: NFT type definition. Only `name` and `symbol` are required.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNftTypeRequest'
+            example:
+              name: My Enterprise NFT
+              symbol: MENFT
+        required: true
+      responses:
+        "201":
+          description: NFT type created successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NftTypeCreatedResponse'
+              example:
+                tokenId: 0.0.66001
+        "500":
+          description: NFT type could not be created on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "400":
+          description: Invalid request — name or symbol is missing.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/nfts/{tokenId}/transfer:
+    post:
+      tags:
+      - NFTs
+      summary: Transfer multiple NFTs
+      description: Transfers multiple NFT instances of the same type from one account
+        to another in a single transaction. The sender must hold all specified NFTs.
+        The recipient must already be associated with the NFT type.
+      operationId: transferNfts
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      requestBody:
+        description: "Serial numbers, sender account ID + key, and recipient account\
+          \ ID."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NftBatchTransferRequest'
+            example:
+              serialNumbers:
+              - 1
+              - 2
+              - 3
+              fromAccountId: 0.0.12345
+              fromAccountKey: 302e020100300506032b657004220420aabbcc...
+              toAccountId: 0.0.98765
+        required: true
+      responses:
+        "500":
+          description: Transfer could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: NFTs transferred successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: 3 NFT(s) of type 0.0.66001 transferred from 0.0.12345 to
+                  0.0.98765 successfully.
+        "400":
+          description: Serial numbers list is missing or empty.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/nfts/{tokenId}/transfer/{serialNumber}:
+    post:
+      tags:
+      - NFTs
+      summary: Transfer a single NFT
+      description: Transfers one NFT instance from one account to another. The sender
+        must hold the NFT and sign the transaction. The recipient must already be
+        associated with the NFT type.
+      operationId: transferNft
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      - name: serialNumber
+        in: path
+        description: The serial number of the NFT to transfer.
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      requestBody:
+        description: "Sender account ID, sender private key, and recipient account\
+          \ ID."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NftTransferRequest'
+            example:
+              fromAccountId: 0.0.12345
+              fromAccountKey: 302e020100300506032b657004220420aabbcc...
+              toAccountId: 0.0.98765
+        required: true
+      responses:
+        "500":
+          description: Transfer could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: NFT transferred successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: "NFT 0.0.66001 #1 transferred from 0.0.12345 to 0.0.98765\
+                  \ successfully."
+  /api/v1/nfts/{tokenId}/mint:
+    post:
+      tags:
+      - NFTs
+      summary: Mint a single NFT
+      description: Mints one new NFT instance of the given type. Provide metadata
+        as a Base64-encoded string (e.g. an IPFS URI). Omit `supplyKey` if the operator
+        account is the supply account.
+      operationId: mintNft
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      requestBody:
+        description: Base64-encoded metadata and optional supply key.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MintNftRequest'
+            example:
+              metadata: aXBmczovL1FtWHh4eHh4eHh4eHh4eHh4eHh4eA==
+        required: true
+      responses:
+        "500":
+          description: Mint operation failed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "400":
+          description: Metadata is missing or blank.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: NFT minted successfully. Returns the serial number of the new
+            instance.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NftMintedResponse'
+              example:
+                serialNumber: 1
+  /api/v1/nfts/{tokenId}/mint/batch:
+    post:
+      tags:
+      - NFTs
+      summary: Mint multiple NFTs
+      description: Mints multiple NFT instances of the given type in a single transaction.
+        Each entry in `metadataList` produces one NFT with a unique serial number.
+        Omit `supplyKey` if the operator account is the supply account.
+      operationId: mintNfts
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      requestBody:
+        description: List of Base64-encoded metadata strings and optional supply key.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MintNftsRequest'
+            example:
+              metadataList:
+              - aXBmczovL1FtQUFBQUFBQUFBQUFBQUE=
+              - aXBmczovL1FtQkJCQkJCQkJCQkJCQkI=
+        required: true
+      responses:
+        "500":
+          description: Mint operation failed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "201":
+          description: NFTs minted successfully. Returns the serial numbers in the
+            same order as the metadata list.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NftMintedBatchResponse'
+              example:
+                serialNumbers:
+                - 1
+                - 2
+                - 3
+        "400":
+          description: Metadata list is missing or empty.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/nfts/{tokenId}/burn:
+    post:
+      tags:
+      - NFTs
+      summary: Burn NFT instances
+      description: Permanently destroys one or more NFT instances by serial number.
+        The NFTs must be held by the treasury account. Omit `supplyKey` if the operator
+        account is the supply account.
+      operationId: burnNfts
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      requestBody:
+        description: Set of serial numbers to burn and optional supply key.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BurnNftsRequest'
+            example:
+              serialNumbers:
+              - 1
+              - 2
+        required: true
+      responses:
+        "400":
+          description: Serial numbers list is missing or empty.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Burn operation failed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: NFT(s) burned successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: "NFT(s) [1, 2] of type 0.0.66001 burned successfully."
+  /api/v1/nfts/{tokenId}/associate:
+    post:
+      tags:
+      - NFTs
+      summary: Associate account with NFT type
+      description: Associates a Hedera account with an NFT token type so it can hold
+        and receive NFTs of that type. An account must be associated before it can
+        receive a transfer of this NFT type.
+      operationId: associateNft
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      requestBody:
+        description: Account ID and private key to authorise the association.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenAssociateRequest'
+            example:
+              accountId: 0.0.12345
+              accountKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "200":
+          description: Account associated with NFT type successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 associated with NFT type 0.0.66001 successfully.
+        "500":
+          description: Association could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - NFTs
+      summary: Dissociate account from NFT type
+      description: Removes the association between a Hedera account and an NFT token
+        type. The account's NFT balance for this type must be zero before dissociating.
+      operationId: dissociateNft
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      requestBody:
+        description: Account ID and private key to authorise the dissociation.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenAssociateRequest'
+            example:
+              accountId: 0.0.12345
+              accountKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "200":
+          description: Account dissociated from NFT type successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 dissociated from NFT type 0.0.66001 successfully.
+        "500":
+          description: Dissociation could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/nfts/associate:
+    post:
+      tags:
+      - NFTs
+      summary: Batch associate account with multiple NFT types
+      description: Associates a Hedera account with multiple NFT token types at once.
+      operationId: batchAssociateNfts
+      requestBody:
+        description: "List of NFT type IDs, Account ID, and private key."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenBatchAssociateRequest'
+            example:
+              tokenIds:
+              - 0.0.66001
+              - 0.0.66002
+              accountId: 0.0.12345
+              accountKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "500":
+          description: Association could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Account associated with NFT types successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 associated with 2 NFT types successfully.
+    delete:
+      tags:
+      - NFTs
+      summary: Batch dissociate account from multiple NFT types
+      description: Removes the association between a Hedera account and multiple NFT
+        token types at once.
+      operationId: batchDissociateNfts
+      requestBody:
+        description: "List of NFT type IDs, Account ID, and private key."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenBatchAssociateRequest'
+            example:
+              tokenIds:
+              - 0.0.66001
+              - 0.0.66002
+              accountId: 0.0.12345
+              accountKey: 302e020100300506032b657004220420aabbcc...
+        required: true
+      responses:
+        "500":
+          description: Dissociation could not be executed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Account dissociated from NFT types successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                message: Account 0.0.12345 dissociated from 2 NFT types successfully.
+  /api/v1/hooks:
+    post:
+      tags:
+      - Hooks
+      summary: Store or update a hook
+      description: Stores or updates a hook on the Hiero network using the provided
+        hook ID and signer keys. The operator account pays the transaction fee.
+      operationId: storeHook
+      requestBody:
+        description: The hook ID and required signer keys.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HookStoreRequest'
+            example:
+              hookId: 0.0.12345
+              signerKeys:
+              - 302e020100300506032b657004220420...
+        required: true
+      responses:
+        "200":
+          description: Hook stored successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HookStoreResponse'
+              example:
+                hookId: 0.0.12345
+                message: Hook 0.0.12345 stored successfully.
+        "400":
+          description: Invalid request format or invalid private keys.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Hook could not be stored on the network.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/contracts:
+    get:
+      tags:
+      - Smart Contracts
+      summary: List all smart contracts
+      description: Fetches a paginated list of all smart contracts from the mirror
+        node.
+      operationId: getAllContracts
+      responses:
+        "500":
+          description: Could not retrieve contracts.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Contracts retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ContractResponse'
+    post:
+      tags:
+      - Smart Contracts
+      summary: Create a smart contract
+      description: Deploys a new smart contract to the network using the provided
+        Base64-encoded bytecode. The operator account pays the transaction fee.
+      operationId: createContract
+      requestBody:
+        description: Base64-encoded contract bytecode.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractCreateRequest'
+            example:
+              bytecode: NjA4MDYwNDA1MjM0ODAxNTEw...
+        required: true
+      responses:
+        "201":
+          description: Contract deployed successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ContractResponse'
+              example:
+                contractId: 0.0.9999
+                deleted: false
+                createdTimestampEpochSecond: 1700000000
+                expirationTimestampEpochSecond: 1800000000
+                evmAddress: 0x000000000000000000000000000000000000270f
+                memo: ""
+        "400":
+          description: "Bytecode is missing, blank, or not valid Base64."
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Contract could not be deployed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/contracts/{contractId}/call:
+    post:
+      tags:
+      - Smart Contracts
+      summary: Call a smart contract function
+      description: Executes a function on an existing smart contract. Currently supports
+        no-argument function calls.
+      operationId: callContractFunction
+      parameters:
+      - name: contractId
+        in: path
+        description: The Hedera contract ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.9999
+      requestBody:
+        description: The name of the function to call.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractCallRequest'
+            example:
+              functionName: myFunction
+        required: true
+      responses:
+        "500":
+          description: Contract call failed.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "400":
+          description: Invalid function name.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Contract function executed successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ContractCallResultResponse'
+              example:
+                gasUsed: 25000
+                costInTinybars: 150000
+  /api/v1/transactions/{transactionId}:
+    get:
+      tags:
+      - Transactions
+      summary: Get transaction by ID
+      description: "Fetches a specific transaction by its Hedera transaction ID from\
+        \ the mirror node. The ID format is `{accountId}@{seconds}.{nanos}`, e.g.\
+        \ `0.0.12345@1700000000.000000000`."
+      operationId: getById
+      parameters:
+      - name: transactionId
+        in: path
+        description: "The Hedera transaction ID in format `{accountId}@{seconds}.{nanos}`."
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345@1700000000.000000000
+      responses:
+        "500":
+          description: Could not retrieve transaction.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Transaction not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Transaction retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TransactionInfoResponse'
+              example:
+                transactionId: 0.0.12345@1700000000.000000000
+                transactionType: CRYPTO_TRANSFER
+                result: SUCCESS
+                scheduled: false
+                chargedTxFee: 855875
+                maxFee: "1000000"
+                consensusTimestampEpochSecond: 1700000000
+                validStartTimestampEpochSecond: 1699999999
+                validDurationSeconds: "120"
+                entityId: null
+                node: 0.0.3
+                nonce: 0
+                parentConsensusTimestampEpochSecond: null
+                transfers:
+                - accountId: 0.0.12345
+                  amount: -1000000000
+                  isApproval: false
+                - accountId: 0.0.98765
+                  amount: 1000000000
+                  isApproval: false
+                tokenTransfers: []
+                nftTransfers: []
+                stakingRewardTransfers: []
+  /api/v1/transactions/account/{accountId}:
+    get:
+      tags:
+      - Transactions
+      summary: List transactions by account
+      description: |-
+        Fetches transactions associated with the specified account from the mirror node. Use the optional `type`, `result`, and `modification` query parameters to narrow results.
+
+        **`type`** — one of the `TransactionType` enum values, e.g. `CRYPTO_TRANSFER`, `TOKEN_MINT`, `TOPIC_MESSAGE_SUBMIT`. See the full list in the schema.
+
+        **`result`** — `SUCCESS` or `FAIL`.
+
+        **`modification`** — `CREDIT` (transactions that added balance) or `DEBIT` (transactions that reduced balance).
+
+        Only one filter can be applied at a time. If more than one is provided, `type` takes precedence, then `result`, then `modification`.
+      operationId: listByAccount
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      - name: type
+        in: query
+        description: "Filter by transaction type, e.g. `CRYPTO_TRANSFER`, `TOKEN_MINT`."
+        required: false
+        schema:
+          type: string
+        example: CRYPTO_TRANSFER
+      - name: result
+        in: query
+        description: "Filter by transaction result: `SUCCESS` or `FAIL`."
+        required: false
+        schema:
+          type: string
+        example: SUCCESS
+      - name: modification
+        in: query
+        description: "Filter by balance modification direction: `CREDIT` or `DEBIT`."
+        required: false
+        schema:
+          type: string
+        example: CREDIT
+      responses:
+        "400":
+          description: "Invalid `type`, `result`, or `modification` value."
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Could not retrieve transactions.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Transactions retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TransactionInfoResponse'
+  /api/v1/tokens/{tokenId}:
+    get:
+      tags:
+      - Fungible Tokens
+      summary: Get token info
+      description: "Fetches detailed token information from the Hiero mirror node,\
+        \ including name, symbol, supply, treasury, and type."
+      operationId: getTokenInfo
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      responses:
+        "200":
+          description: Token info retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenInfoResponse'
+              example:
+                tokenId: 0.0.55001
+                name: My Enterprise Token
+                symbol: MET
+                type: FUNGIBLE_COMMON
+                memo: null
+                decimals: 0
+                supplyType: INFINITE
+                totalSupply: "5000"
+                maxSupply: "0"
+                treasuryAccountId: 0.0.1001
+                deleted: false
+        "404":
+          description: Token not found on the mirror node.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Could not retrieve token info.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/tokens/{tokenId}/balances:
+    get:
+      tags:
+      - Fungible Tokens
+      summary: Get all token balances
+      description: Fetches a list of balances for all accounts that hold the specified
+        token from the Hiero mirror node.
+      operationId: getTokenBalances
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      responses:
+        "500":
+          description: Could not retrieve balance info.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Token balances retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenBalanceResponse'
+  /api/v1/tokens/{tokenId}/balances/{accountId}:
+    get:
+      tags:
+      - Fungible Tokens
+      summary: Get token balance
+      description: Fetches the token balance for a specific account from the Hiero
+        mirror node.
+      operationId: getTokenBalance
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera token ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.55001
+      - name: accountId
+        in: path
+        description: The Hedera account ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      responses:
+        "404":
+          description: Balance not found on the mirror node.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Could not retrieve balance info.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Token balance retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenBalanceResponse'
+              example:
+                accountId: 0.0.12345
+                balance: 250
+                decimals: 0
+  /api/v1/tokens/account/{accountId}:
+    get:
+      tags:
+      - Fungible Tokens
+      summary: Get tokens by account
+      description: Fetches a list of tokens associated with the specified account
+        from the Hiero mirror node.
+      operationId: getAccountTokens
+      parameters:
+      - name: accountId
+        in: path
+        description: The Hedera account ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      responses:
+        "200":
+          description: Tokens retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        "500":
+          description: Could not retrieve token info.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/nfts/{tokenId}/instances:
+    get:
+      tags:
+      - NFTs
+      summary: List all NFT instances of a type
+      description: Fetches all active (non-burned) NFT instances for a given token
+        type from the Hiero mirror node. Burned NFTs have a null owner and are automatically
+        excluded from the results.
+      operationId: listNftsByType
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      responses:
+        "500":
+          description: Could not retrieve NFT instances.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: NFT instances retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NftResponse'
+  /api/v1/nfts/{tokenId}/instances/{serialNumber}:
+    get:
+      tags:
+      - NFTs
+      summary: Get a specific NFT instance
+      description: Fetches a single NFT instance by token type and serial number from
+        the Hiero mirror node.
+      operationId: getNftInstance
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      - name: serialNumber
+        in: path
+        description: The serial number of the NFT instance.
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      responses:
+        "404":
+          description: NFT instance not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Could not retrieve NFT instance.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: NFT instance retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NftResponse'
+              example:
+                tokenId: 0.0.66001
+                serialNumber: 1
+                ownerId: 0.0.12345
+                metadata: aXBmczovL1FtWHh4eHh4eHh4eHh4eHh4eHh4eA==
+  /api/v1/nfts/{tokenId}/instances/owner/{ownerId}:
+    get:
+      tags:
+      - NFTs
+      summary: List NFT instances of a type owned by an account
+      description: Fetches all NFT instances of a specific token type that are owned
+        by the given account.
+      operationId: listNftsByOwnerAndType
+      parameters:
+      - name: tokenId
+        in: path
+        description: The Hedera NFT token type ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.66001
+      - name: ownerId
+        in: path
+        description: The Hedera account ID of the owner.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      responses:
+        "500":
+          description: Could not retrieve NFT instances.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: NFT instances retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NftResponse'
+  /api/v1/nfts/owner/{ownerId}/instances:
+    get:
+      tags:
+      - NFTs
+      summary: List all NFT instances owned by an account
+      description: Fetches all NFT instances currently owned by the specified account
+        from the Hiero mirror node.
+      operationId: listNftsByOwner
+      parameters:
+      - name: ownerId
+        in: path
+        description: The Hedera account ID of the owner.
+        required: true
+        schema:
+          type: string
+        example: 0.0.12345
+      responses:
+        "500":
+          description: Could not retrieve NFT instances.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: NFT instances retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NftResponse'
+  /api/v1/network/supplies:
+    get:
+      tags:
+      - Network
+      summary: Get HBAR supply information
+      description: "Fetches the current HBAR supply figures from the Hiero mirror\
+        \ node. `releasedSupply` is the amount of HBAR currently in circulation. `totalSupply`\
+        \ includes all HBAR including unreleased treasury holdings. Both values are\
+        \ expressed in tinybar (1 HBAR = 100,000,000 tinybar)."
+      operationId: getSupplies
+      responses:
+        "200":
+          description: HBAR supply information retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NetworkSuppliesResponse'
+              example:
+                releasedSupply: "3987242498080780000"
+                totalSupply: "5000000000000000000"
+        "500":
+          description: Could not retrieve supply information.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Supply data not available on the mirror node.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/network/stake:
+    get:
+      tags:
+      - Network
+      summary: Get network staking information
+      description: "Fetches the current staking configuration and statistics for the\
+        \ Hiero network from the mirror node. Includes total staked HBAR, reward rates,\
+        \ staking period duration, and reward threshold values."
+      operationId: getStake
+      responses:
+        "200":
+          description: Network staking information retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NetworkStakeResponse'
+              example:
+                maxStakeReward: 17500000000000000
+                maxStakeRewardPerHbar: 6849
+                maxTotalReward: 17500000000000000
+                nodeRewardFeeFraction: 0.0
+                reservedStakingRewards: 50000000000000000
+                rewardBalanceThreshold: 25000000000000000
+                stakeTotal: 5000000000000000
+                stakingPeriodDuration: 1440
+                stakingPeriodsStored: 365
+                stakingRewardFeeFraction: 0.1
+                stakingRewardRate: 100
+                stakingStartThreshold: 25000000000000000
+                unreservedStakingRewardBalance: 12000000000000000
+        "500":
+          description: Could not retrieve staking information.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Staking data not available on the mirror node.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/network/fees:
+    get:
+      tags:
+      - Network
+      summary: Get EVM gas fees
+      description: "Fetches the current EVM gas fees for smart contract and Ethereum\
+        \ transaction types from the Hiero mirror node (sourced from `/api/v1/network/fees`).\
+        \ This covers EVM-based operations such as ContractCall, ContractCreate, and\
+        \ EthereumTransaction. Note: HBAR transfer and HTS token fees (CRYPTOTRANSFER,\
+        \ TOKENMINT, etc.) use a separate USD-denominated fee schedule and are not\
+        \ included here. Returns an empty list if no fee schedule is currently published."
+      operationId: getFees
+      responses:
+        "500":
+          description: Could not retrieve network fees.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: EVM gas fees retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/NetworkFeeResponse'
+              example:
+              - gas: 171
+                transactionType: ContractCall
+              - gas: 371
+                transactionType: ContractCreate
+              - gas: 113
+                transactionType: EthereumTransaction
+  /api/v1/network/exchange-rates:
+    get:
+      tags:
+      - Network
+      summary: Get HBAR/USD exchange rates
+      description: "Fetches the current and next HBAR/USD exchange rates from the\
+        \ Hiero mirror node. The current rate is active now; the next rate takes effect\
+        \ when the current one expires. Rates are expressed as a ratio: `centEquivalent\
+        \ / hbarEquivalent` gives the USD cent value per HBAR."
+      operationId: getExchangeRates
+      responses:
+        "404":
+          description: Exchange rate data not available on the mirror node.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Exchange rates retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ExchangeRatesResponse'
+              example:
+                currentRate:
+                  centEquivalent: 12
+                  hbarEquivalent: 1
+                  expirationTimeEpochSecond: 1700000000
+                nextRate:
+                  centEquivalent: 13
+                  hbarEquivalent: 1
+                  expirationTimeEpochSecond: 1700003600
+        "500":
+          description: Could not retrieve exchange rates.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/contracts/{contractId}:
+    get:
+      tags:
+      - Smart Contracts
+      summary: Get a smart contract by ID
+      description: Fetches information about a specific smart contract from the mirror
+        node.
+      operationId: getContractById
+      parameters:
+      - name: contractId
+        in: path
+        description: The Hedera contract ID.
+        required: true
+        schema:
+          type: string
+        example: 0.0.9999
+      responses:
+        "500":
+          description: Could not retrieve contract.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Contract not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Contract retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ContractResponse'
+  /api/v1/blocks:
+    get:
+      tags:
+      - Blocks
+      summary: List blocks
+      description: "Fetches the first page of blocks from the Hiero mirror node in\
+        \ descending order (most recent first). Each block contains transaction count,\
+        \ gas usage, EVM hash, HAPI version, and timestamp range."
+      operationId: listBlocks
+      responses:
+        "200":
+          description: Blocks retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BlockResponse'
+              example:
+              - count: 3
+                hapiVersion: 0.49.0
+                hash: 0x5b6e7a8c...
+                name: 2024-01-15T10:30:00Z
+                number: 61234567
+                previousHash: 0x4a5d6b7c...
+                size: 2048
+                fromTimestampEpochSecond: 1700000000
+                toTimestampEpochSecond: 1700000002
+                gasUsed: 850000
+                logsBloom: null
+        "500":
+          description: Could not retrieve blocks.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/blocks/number/{number}:
+    get:
+      tags:
+      - Blocks
+      summary: Get block by number
+      description: Fetches a specific block by its sequential block number from the
+        Hiero mirror node.
+      operationId: getBlockByNumber
+      parameters:
+      - name: number
+        in: path
+        description: The sequential block number.
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 61234567
+      responses:
+        "400":
+          description: Block number must not be negative.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Block retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BlockResponse'
+              example:
+                count: 3
+                hapiVersion: 0.49.0
+                hash: 0x5b6e7a8c...
+                name: 2024-01-15T10:30:00Z
+                number: 61234567
+                previousHash: 0x4a5d6b7c...
+                size: 2048
+                fromTimestampEpochSecond: 1700000000
+                toTimestampEpochSecond: 1700000002
+                gasUsed: 850000
+                logsBloom: null
+        "404":
+          description: No block found with the given number.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Could not retrieve block.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/blocks/hash/{hash}:
+    get:
+      tags:
+      - Blocks
+      summary: Get block by hash
+      description: Fetches a specific block by its EVM-compatible 32-byte hash from
+        the Hiero mirror node. The hash should be provided as a hex-encoded string
+        (with or without the `0x` prefix).
+      operationId: getBlockByHash
+      parameters:
+      - name: hash
+        in: path
+        description: "The EVM-compatible block hash (hex-encoded, with or without\
+          \ 0x prefix)."
+        required: true
+        schema:
+          type: string
+        example: 0x5b6e7a8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a
+      responses:
+        "200":
+          description: Block retrieved successfully.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BlockResponse'
+              example:
+                count: 3
+                hapiVersion: 0.49.0
+                hash: 0x5b6e7a8c...
+                name: 2024-01-15T10:30:00Z
+                number: 61234567
+                previousHash: 0x4a5d6b7c...
+                size: 2048
+                fromTimestampEpochSecond: 1700000000
+                toTimestampEpochSecond: 1700000002
+                gasUsed: 850000
+                logsBloom: null
+        "500":
+          description: Could not retrieve block.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: No block found with the given hash.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    UpdateTopicRequest:
+      required:
+      - currentAdminPrivateKey
+      - memo
+      type: object
+      properties:
+        currentAdminPrivateKey:
+          type: string
+          description: "The current admin private key of the topic, used to authorise\
+            \ the update."
+          example: 302e020100300506032b657004220420aabbcc...
+        memo:
+          type: string
+          description: The new memo to set on the topic.
+          example: Updated enterprise event bus
+      description: "Request body for atomically updating a topic's admin key, submit\
+        \ key, and memo in a single transaction. The server generates fresh ED25519\
+        \ key pairs for both the admin and submit keys and returns them in the response."
+    TopicUpdatedResponse:
+      type: object
+      properties:
+        topicId:
+          type: string
+          description: The topic ID that was updated.
+          example: 0.0.55001
+        newAdminPrivateKey:
+          type: string
+          description: The newly generated admin private key. Keep this secure.
+          example: 302e020100300506032b657004220420aabbcc...
+        newAdminPublicKey:
+          type: string
+          description: The newly generated admin public key.
+          example: 302a300506032b6570032100aabbcc...
+        newSubmitPrivateKey:
+          type: string
+          description: The newly generated submit private key. Keep this secure.
+          example: 302e020100300506032b657004220420ddeeff...
+        newSubmitPublicKey:
+          type: string
+          description: The newly generated submit public key.
+          example: 302a300506032b6570032100ddeeff...
+        memo:
+          type: string
+          description: The updated memo.
+          example: Updated enterprise event bus
+      description: "Response returned when a topic's admin key, submit key, and memo\
+        \ are updated atomically. Both new key pairs were generated server-side —\
+        \ save them securely."
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Error type URI
+          example: about:blank
+        title:
+          type: string
+          description: Short error title
+          example: Internal Server Error
+        status:
+          type: integer
+          description: HTTP status code
+          format: int32
+          example: 500
+        detail:
+          type: string
+          description: Detailed error message
+          example: An unexpected error occurred
+        instance:
+          type: string
+          description: Request URI
+          example: /api/v1/accounts
+    UpdateTopicKeyRequest:
+      required:
+      - adminPrivateKey
+      type: object
+      properties:
+        adminPrivateKey:
+          type: string
+          description: "The current admin private key of the topic, used to authorise\
+            \ the key rotation."
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for rotating a topic key (admin or submit). The caller
+        proves ownership with the current admin key; the server generates a new key
+        pair and returns it in the response.
+    TopicKeyRotationResponse:
+      type: object
+      properties:
+        topicId:
+          type: string
+          description: The topic ID whose key was rotated.
+          example: 0.0.55001
+        newPrivateKey:
+          type: string
+          description: The newly generated private key. Keep this secure.
+          example: 302e020100300506032b657004220420ddeeff...
+        newPublicKey:
+          type: string
+          description: The newly generated public key.
+          example: 302a300506032b6570032100ddeeff...
+      description: Response returned when a topic key (admin or submit) has been rotated.
+        The new key pair was generated server-side — save it securely.
+    UpdateTopicMemoRequest:
+      required:
+      - adminPrivateKey
+      - memo
+      type: object
+      properties:
+        adminPrivateKey:
+          type: string
+          description: "The current admin private key of the topic, used to authorise\
+            \ the memo update."
+          example: 302e020100300506032b657004220420aabbcc...
+        memo:
+          type: string
+          description: The new memo value to set on the topic.
+          example: Updated enterprise event bus topic
+      description: Request body for updating a topic's memo. The admin key is required
+        to authorise the update.
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Human-readable confirmation message.
+          example: Account memo updated successfully.
+      description: Confirmation response returned when an operation completes successfully
+        but has no data to return.
+    UpdateFileExpirationRequest:
+      required:
+      - expirationTimeEpochSecond
+      type: object
+      properties:
+        expirationTimeEpochSecond:
+          type: integer
+          description: New expiration time as a Unix epoch second. Must be in the
+            future.
+          format: int64
+          example: 1900000000
+      description: Request body for updating the expiration time of an existing HFS
+        file.
+    UpdateFileRequest:
+      required:
+      - contents
+      type: object
+      properties:
+        contents:
+          type: string
+          description: Base64-encoded content that will fully replace the current
+            file contents.
+          example: VXBkYXRlZCBjb250ZW50
+      description: Request body for replacing the contents of an existing HFS file.
+        The new content is provided as a Base64-encoded string.
+    UpdateAccountRequest:
+      required:
+      - currentPrivateKey
+      type: object
+      properties:
+        currentPrivateKey:
+          type: string
+          description: "The current private key of the account, used to authorise\
+            \ the update."
+          example: 302e020100300506032b657004220420aabbcc...
+        memo:
+          type: string
+          description: The new memo to set on the account.
+          example: Enterprise treasury account — updated
+      description: Request body for updating both the key pair and memo of an account
+        in a single transaction. The proxy generates a fresh key pair server-side
+        and returns it in the response — you only need to prove ownership of the current
+        key.
+    AccountResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The newly generated Hedera Account ID
+          example: 0.0.12345
+        publicKey:
+          type: string
+          description: The public key associated with the account
+          example: 302a300506032b6570032100...
+        privateKey:
+          type: string
+          description: The private key to control the account (keep this secure!)
+          example: 302e020100300506032b657004220420...
+    UpdateMemoRequest:
+      type: object
+      properties:
+        privateKey:
+          type: string
+          description: The current private key to authorize the update
+          example: 302e020100300506032b657004220420...
+        memo:
+          type: string
+          description: The new memo string to set on the account
+          example: Updated enterprise account memo
+    UpdateKeyRequest:
+      required:
+      - currentPrivateKey
+      type: object
+      properties:
+        currentPrivateKey:
+          type: string
+          description: "The current private key of the account, used to authorise\
+            \ the key rotation."
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for rotating an account's key pair. The proxy generates
+        a fresh key pair server-side and returns it in the response — you only need
+        to prove ownership of the current key.
+    CreateTopicRequest:
+      type: object
+      properties:
+        memo:
+          type: string
+          description: Optional memo to attach to the topic.
+          example: Enterprise event bus topic
+      description: Request body for creating a public topic. The operator account
+        is used as admin key.
+    TopicCreatedResponse:
+      type: object
+      properties:
+        topicId:
+          type: string
+          description: The newly created topic ID.
+          example: 0.0.55001
+        submitPrivateKey:
+          type: string
+          description: The generated submit private key — only set for private topics.
+            Keep this secure.
+          nullable: true
+          example: 302e020100300506032b657004220420ddeeff...
+        submitPublicKey:
+          type: string
+          description: The generated submit public key — only set for private topics.
+          nullable: true
+          example: 302a300506032b6570032100ddeeff...
+      description: "Response returned when a topic is created. For private topics,\
+        \ the generated submit key pair is included — save it securely."
+    SubmitMessageRequest:
+      required:
+      - message
+      type: object
+      properties:
+        message:
+          type: string
+          description: The text message to submit to the topic.
+          example: "Hello, Hiero network!"
+        submitKey:
+          type: string
+          description: The submit private key — only required for private topics.
+          example: 302e020100300506032b657004220420ddeeff...
+      description: "Request body for submitting a message to a topic. For private\
+        \ topics, provide the submit key to authorise the submission."
+    SubmitBinaryMessageRequest:
+      required:
+      - messageBase64
+      type: object
+      properties:
+        messageBase64:
+          type: string
+          description: Base64-encoded binary message content to submit to the topic.
+          example: SGVsbG8sIEhpZXJvIG5ldHdvcmsh
+        submitKey:
+          type: string
+          description: The submit private key — only required for private topics.
+          example: 302e020100300506032b657004220420ddeeff...
+      description: "Request body for submitting a binary message to a topic. The message\
+        \ must be Base64-encoded. For private topics, provide the submit key to authorise\
+        \ the submission."
+    CreateTopicWithAdminKeyRequest:
+      required:
+      - adminPrivateKey
+      type: object
+      properties:
+        adminPrivateKey:
+          type: string
+          description: The private key to use as the admin key for the topic.
+          example: 302e020100300506032b657004220420aabbcc...
+        memo:
+          type: string
+          description: Optional memo to attach to the topic.
+          example: Enterprise audit log topic
+      description: Request body for creating a public topic with a custom admin key.
+        The provided private key becomes the admin key for the topic instead of the
+        operator.
+    CreatePrivateTopicRequest:
+      type: object
+      properties:
+        memo:
+          type: string
+          description: Optional memo to attach to the topic.
+          example: Private enterprise channel
+      description: Request body for creating a private topic. The server generates
+        a fresh ED25519 submit key and returns it in the response. The operator account
+        is used as admin key.
+    CreatePrivateTopicWithAdminKeyRequest:
+      required:
+      - adminPrivateKey
+      type: object
+      properties:
+        adminPrivateKey:
+          type: string
+          description: The private key to use as the admin key for the topic.
+          example: 302e020100300506032b657004220420aabbcc...
+        memo:
+          type: string
+          description: Optional memo to attach to the topic.
+          example: Private enterprise channel
+      description: Request body for creating a private topic with a custom admin key.
+        The provided admin key controls topic management. The server generates a fresh
+        ED25519 submit key and returns it in the response.
+    CreateTokenRequest:
+      required:
+      - name
+      - symbol
+      type: object
+      properties:
+        name:
+          type: string
+          description: The full name of the token.
+          example: My Enterprise Token
+        symbol:
+          type: string
+          description: The ticker symbol of the token.
+          example: MET
+        treasuryAccountId:
+          type: string
+          description: "Private key of the treasury account. If omitted, the operator\
+            \ account is used as treasury."
+          nullable: true
+          example: 302e020100300506032b657004220420aabbcc...
+        treasuryKey:
+          type: string
+          description: Account ID of the treasury account. Required when treasuryAccountId
+            is set.
+          nullable: true
+          example: 0.0.12345
+        supplyKey:
+          type: string
+          description: "Private key of the supply account. If omitted, the operator\
+            \ account is used as supply account."
+          nullable: true
+          example: 302e020100300506032b657004220420ddeeff...
+      description: Request body for creating a new fungible token. The operator account
+        acts as both treasury and supply account when no custom keys are provided.
+    TokenCreatedResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          description: The ID of the newly created token.
+          example: 0.0.55001
+      description: Response returned when a fungible token is created successfully.
+    TokenOperatorTransferRequest:
+      required:
+      - amount
+      - toAccountId
+      type: object
+      properties:
+        toAccountId:
+          type: string
+          description: The Hedera account ID of the recipient.
+          example: 0.0.98765
+        amount:
+          minimum: 1
+          type: integer
+          description: The number of token units to transfer.
+          format: int64
+          example: 250
+      description: Request body for transferring fungible tokens from the operator
+        account to another account.
+    TokenTransferRequest:
+      required:
+      - amount
+      - fromAccountKey
+      - toAccountId
+      type: object
+      properties:
+        fromAccountKey:
+          type: string
+          description: The private key of the sending account.
+          example: 302e020100300506032b657004220420aabbcc...
+        toAccountId:
+          type: string
+          description: The Hedera account ID of the recipient.
+          example: 0.0.98765
+        amount:
+          minimum: 1
+          type: integer
+          description: The number of token units to transfer.
+          format: int64
+          example: 100
+      description: Request body for transferring fungible tokens between two user
+        accounts. The sender's private key is required to authorise the transaction.
+    MintTokenRequest:
+      required:
+      - amount
+      type: object
+      properties:
+        amount:
+          minimum: 1
+          type: integer
+          description: The number of token units to mint and add to the treasury account's
+            balance.
+          format: int64
+          example: 1000
+        supplyKey:
+          type: string
+          description: Private key of the supply account. Required only when the token
+            was created with a custom supply key; omit when the operator is the supply
+            account.
+          nullable: true
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for minting new units of a fungible token.
+    TokenSupplyResponse:
+      type: object
+      properties:
+        totalSupply:
+          type: integer
+          description: The total supply of the token after the operation.
+          format: int64
+          example: 10000
+      description: "Response returned after a mint or burn operation, containing the\
+        \ updated total supply."
+    BurnTokenRequest:
+      required:
+      - amount
+      type: object
+      properties:
+        amount:
+          minimum: 1
+          type: integer
+          description: The number of token units to burn from the treasury account.
+          format: int64
+          example: 500
+        supplyKey:
+          type: string
+          description: Private key of the supply account. Required only when the token
+            was created with a custom supply key; omit when the operator is the supply
+            account.
+          nullable: true
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for burning (permanently removing) fungible token
+        units.
+    TokenAssociateRequest:
+      required:
+      - accountId
+      - accountKey
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The Hedera account ID to associate with the token.
+          example: 0.0.12345
+        accountKey:
+          type: string
+          description: The private key of the account to authorise the association.
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for associating or dissociating an account with a
+        fungible token.
+    TokenBatchAssociateRequest:
+      required:
+      - accountId
+      - accountKey
+      - tokenIds
+      type: object
+      properties:
+        tokenIds:
+          type: array
+          description: The list of Hedera token IDs.
+          example:
+          - 0.0.55001
+          - 0.0.55002
+          items:
+            type: string
+            description: The list of Hedera token IDs.
+            example: "[\"0.0.55001\",\"0.0.55002\"]"
+        accountId:
+          type: string
+          description: The Hedera account ID.
+          example: 0.0.12345
+        accountKey:
+          type: string
+          description: The private key of the account to authorise the operation.
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for associating or dissociating an account with multiple
+        fungible tokens at once.
+    CreateNftTypeRequest:
+      required:
+      - name
+      - symbol
+      type: object
+      properties:
+        name:
+          type: string
+          description: The full name of the NFT type.
+          example: My Enterprise NFT
+        symbol:
+          type: string
+          description: The ticker symbol of the NFT type.
+          example: MENFT
+        treasuryAccountId:
+          type: string
+          description: "Account ID of the treasury account. If omitted, the operator\
+            \ account is used as treasury."
+          nullable: true
+          example: 0.0.12345
+        treasuryKey:
+          type: string
+          description: Private key of the treasury account. Required when treasuryAccountId
+            is set.
+          nullable: true
+          example: 302e020100300506032b657004220420aabbcc...
+        supplierKey:
+          type: string
+          description: "Private key of the supply account. If omitted, the operator\
+            \ account is used as supply (mint/burn) account."
+          nullable: true
+          example: 302e020100300506032b657004220420ddeeff...
+      description: Request body for creating a new NFT token type. The operator account
+        acts as both treasury and supply account when no custom keys are provided.
+    NftTypeCreatedResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          description: The ID of the newly created NFT token type.
+          example: 0.0.66001
+      description: Response returned when a new NFT token type is created successfully.
+    NftBatchTransferRequest:
+      required:
+      - fromAccountId
+      - fromAccountKey
+      - serialNumbers
+      - toAccountId
+      type: object
+      properties:
+        serialNumbers:
+          type: array
+          description: The serial numbers of the NFTs to transfer.
+          example:
+          - 1
+          - 2
+          - 3
+          items:
+            type: integer
+            description: The serial numbers of the NFTs to transfer.
+            format: int64
+        fromAccountId:
+          type: string
+          description: The Hedera account ID that currently holds the NFTs.
+          example: 0.0.12345
+        fromAccountKey:
+          type: string
+          description: The private key of the sending account to authorise the transfer.
+          example: 302e020100300506032b657004220420aabbcc...
+        toAccountId:
+          type: string
+          description: The Hedera account ID that should receive the NFTs. The recipient
+            must already be associated with the NFT type.
+          example: 0.0.98765
+      description: Request body for transferring multiple NFT serial numbers of the
+        same type from one account to another in a single transaction.
+    NftTransferRequest:
+      required:
+      - fromAccountId
+      - fromAccountKey
+      - toAccountId
+      type: object
+      properties:
+        fromAccountId:
+          type: string
+          description: The Hedera account ID that currently holds the NFT.
+          example: 0.0.12345
+        fromAccountKey:
+          type: string
+          description: The private key of the sending account to authorise the transfer.
+          example: 302e020100300506032b657004220420aabbcc...
+        toAccountId:
+          type: string
+          description: The Hedera account ID that should receive the NFT. The recipient
+            must already be associated with the NFT type.
+          example: 0.0.98765
+      description: Request body for transferring a single NFT from one account to
+        another.
+    MintNftRequest:
+      required:
+      - metadata
+      type: object
+      properties:
+        metadata:
+          type: string
+          description: Base64-encoded metadata for the NFT instance (e.g. a URI or
+            JSON blob).
+          example: aXBmczovL1FtWHh4eHh4eHh4eHh4eHh4eHh4eA==
+        supplyKey:
+          type: string
+          description: Private key of the supply account. Required only when the NFT
+            type was created with a custom supply key; omit when the operator is the
+            supply account.
+          nullable: true
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for minting a single NFT instance. Metadata is provided
+        as a Base64-encoded string.
+    NftMintedResponse:
+      type: object
+      properties:
+        serialNumber:
+          type: integer
+          description: The serial number assigned to the newly minted NFT.
+          format: int64
+          example: 1
+      description: Response returned after a single NFT is minted successfully.
+    MintNftsRequest:
+      required:
+      - metadataList
+      type: object
+      properties:
+        metadataList:
+          type: array
+          description: "List of Base64-encoded metadata strings, one per NFT to mint.\
+            \ Each entry produces one NFT with a unique serial number."
+          example:
+          - aXBmczovL1FtQUFBQUFBQUFBQUFBQUE=
+          - aXBmczovL1FtQkJCQkJCQkJCQkJCQkI=
+          items:
+            type: string
+            description: "List of Base64-encoded metadata strings, one per NFT to\
+              \ mint. Each entry produces one NFT with a unique serial number."
+            example: "[\"aXBmczovL1FtQUFBQUFBQUFBQUFBQUE=\",\"aXBmczovL1FtQkJCQkJCQkJCQkJCQkI=\"\
+              ]"
+        supplyKey:
+          type: string
+          description: Private key of the supply account. Required only when the NFT
+            type was created with a custom supply key; omit when the operator is the
+            supply account.
+          nullable: true
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for minting multiple NFT instances in a single transaction.
+        Each metadata entry produces one new NFT serial number. Metadata values are
+        Base64-encoded strings.
+    NftMintedBatchResponse:
+      type: object
+      properties:
+        serialNumbers:
+          type: array
+          description: "The serial numbers assigned to the newly minted NFTs, in the\
+            \ same order as the supplied metadata list."
+          example:
+          - 1
+          - 2
+          - 3
+          items:
+            type: integer
+            description: "The serial numbers assigned to the newly minted NFTs, in\
+              \ the same order as the supplied metadata list."
+            format: int64
+      description: Response returned after multiple NFTs are minted in a single transaction.
+    BurnNftsRequest:
+      required:
+      - serialNumbers
+      type: object
+      properties:
+        serialNumbers:
+          uniqueItems: true
+          type: array
+          description: The serial numbers of the NFTs to burn.
+          example:
+          - 1
+          - 2
+          - 3
+          items:
+            type: integer
+            description: The serial numbers of the NFTs to burn.
+            format: int64
+        supplyKey:
+          type: string
+          description: Private key of the supply account. Required only when the NFT
+            type was created with a custom supply key; omit when the operator is the
+            supply account.
+          nullable: true
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for burning one or more NFT serial numbers. The supply
+        account must sign the transaction.
+    HookStoreRequest:
+      required:
+      - contractId
+      - hookNumber
+      - signerKeys
+      type: object
+      properties:
+        contractId:
+          type: string
+          description: The ID of the contract the hook is attached to.
+          example: 0.0.12345
+        hookNumber:
+          type: integer
+          description: The number of the hook.
+          format: int64
+          example: 1
+        signerKeys:
+          type: array
+          description: List of ED25519 or ECDSA private keys (hex encoded) required
+            to sign the transaction.
+          example:
+          - 302e020100300506032b657004220420...
+          - 302e020100300506032b657004220420...
+          items:
+            type: string
+            description: List of ED25519 or ECDSA private keys (hex encoded) required
+              to sign the transaction.
+            example: "[\"302e020100300506032b657004220420...\",\"302e020100300506032b657004220420...\"\
+              ]"
+      description: Request body for storing or updating a hook on the Hiero network.
+    HookStoreResponse:
+      type: object
+      properties:
+        hookId:
+          type: string
+          description: The ID of the hook that was stored.
+          example: 0.0.12345
+        message:
+          type: string
+          description: A success message.
+          example: Hook stored successfully.
+      description: Response returned when a hook is stored successfully.
+    CreateFileRequest:
+      required:
+      - contents
+      type: object
+      properties:
+        contents:
+          type: string
+          description: Base64-encoded content to store in the file.
+          example: SGVsbG8gSGllcm8h
+        expirationTimeEpochSecond:
+          type: integer
+          description: Optional Unix epoch second at which the file should expire
+            and be deleted. Must be a future timestamp. If omitted the network default
+            expiry is used.
+          format: int64
+          nullable: true
+          example: 1800000000
+      description: Request body for creating a new file on the Hiero File Service
+        (HFS). File contents are provided as a Base64-encoded string.
+    FileCreatedResponse:
+      type: object
+      properties:
+        fileId:
+          type: string
+          description: The ID of the newly created file.
+          example: 0.0.77001
+      description: Response returned when a new HFS file is created successfully.
+    ContractCreateRequest:
+      required:
+      - bytecode
+      type: object
+      properties:
+        bytecode:
+          type: string
+          description: Hex-encoded bytecode of the smart contract.
+          example: 6080604052348015610010576000...
+      description: Request body for creating a new smart contract. The bytecode must
+        be provided as a Hex-encoded string (with or without '0x' prefix).
+    ContractResponse:
+      type: object
+      properties:
+        contractId:
+          type: string
+          description: The ID of the smart contract.
+          example: 0.0.1234
+        deleted:
+          type: boolean
+          description: Whether the contract is deleted.
+          example: false
+        createdTimestampEpochSecond:
+          type: integer
+          description: The creation timestamp in seconds.
+          format: int64
+          example: 1700000000
+        expirationTimestampEpochSecond:
+          type: integer
+          description: The expiration timestamp in seconds.
+          format: int64
+          example: 1800000000
+        evmAddress:
+          type: string
+          description: The EVM address of the contract.
+          example: 0x00000000000000000000000000000000000004d2
+        memo:
+          type: string
+          description: The memo associated with the contract.
+          example: My Smart Contract
+      description: Response containing smart contract information.
+    ContractCallRequest:
+      required:
+      - functionName
+      type: object
+      properties:
+        functionName:
+          type: string
+          description: The name of the function to call.
+          example: myFunction
+      description: Request body for calling a smart contract function.
+    ContractCallResultResponse:
+      type: object
+      properties:
+        gasUsed:
+          type: integer
+          description: The gas used by the contract call.
+          format: int64
+          example: 12345
+        costInTinybars:
+          type: integer
+          description: The cost of the contract call in tinybars.
+          format: int64
+          example: 100000
+      description: Response containing the result of a smart contract function call.
+    CreateAccountRequest:
+      type: object
+      properties:
+        initialBalanceInHbar:
+          minimum: 0
+          type: integer
+          description: Initial balance to fund the new account with (in HBAR). Must
+            be >= 0.
+          format: int64
+          example: 10
+      description: Optional request body for account creation. If omitted the account
+        is created with 0 HBAR.
+    TransferRequest:
+      type: object
+      properties:
+        fromAccountPrivateKey:
+          type: string
+          description: The private key of the sending account
+          example: 302e020100300506032b657004220420...
+        toAccountId:
+          type: string
+          description: The account ID receiving the HBAR
+          example: 0.0.98765
+        amountInHbar:
+          type: integer
+          description: The amount of HBAR to transfer
+          format: int64
+    OperatorTransferRequest:
+      type: object
+      properties:
+        toAccountId:
+          type: string
+          description: The account ID receiving the HBAR from the operator
+          example: 0.0.98765
+        amountInHbar:
+          type: integer
+          description: The amount of HBAR to transfer
+          format: int64
+          example: 100
+    HbarTransferResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The Hedera account ID involved in this transfer.
+          example: 0.0.12345
+        amount:
+          type: integer
+          description: "Amount transferred in tinybar. Positive = credit, negative\
+            \ = debit."
+          format: int64
+          example: -1000000000
+        isApproval:
+          type: boolean
+          description: Whether this transfer was an approved allowance transfer.
+          example: false
+      description: An HBAR transfer entry within a transaction.
+    NftTransferResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          description: The Hedera NFT token type ID.
+          nullable: true
+          example: 0.0.66001
+        serialNumber:
+          type: integer
+          description: Serial number of the transferred NFT.
+          format: int64
+          example: 1
+        senderAccountId:
+          type: string
+          description: The account ID that sent the NFT.
+          nullable: true
+          example: 0.0.12345
+        receiverAccountId:
+          type: string
+          description: The account ID that received the NFT.
+          nullable: true
+          example: 0.0.98765
+        isApproval:
+          type: boolean
+          description: Whether this transfer was an approved allowance transfer.
+          example: false
+      description: An NFT transfer entry within a transaction.
+    StakingRewardTransferResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The account ID that received the staking reward.
+          example: 0.0.12345
+        amount:
+          type: integer
+          description: Staking reward amount in tinybar.
+          format: int64
+          example: 5000000
+      description: A staking reward transfer entry within a transaction.
+    TokenTransferResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          description: The Hedera token ID.
+          example: 0.0.55001
+        accountId:
+          type: string
+          description: The Hedera account ID involved in this transfer.
+          example: 0.0.12345
+        amount:
+          type: integer
+          description: "Amount of token units transferred. Positive = credit, negative\
+            \ = debit."
+          format: int64
+          example: 500
+        isApproval:
+          type: boolean
+          description: Whether this transfer was an approved allowance transfer.
+          example: false
+      description: A fungible token transfer entry within a transaction.
+    TransactionInfoResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          description: The unique transaction ID.
+          example: 0.0.12345@1700000000.000000000
+        transactionType:
+          type: string
+          description: The transaction type.
+          example: CRYPTO_TRANSFER
+        result:
+          type: string
+          description: The transaction result.
+          example: SUCCESS
+        scheduled:
+          type: boolean
+          description: Whether this was a scheduled transaction.
+          example: false
+        chargedTxFee:
+          type: integer
+          description: Transaction fee charged in tinybar.
+          format: int64
+          example: 855875
+        maxFee:
+          type: string
+          description: Maximum fee the payer was willing to pay in tinybar.
+          example: "1000000"
+        consensusTimestampEpochSecond:
+          type: integer
+          description: Unix epoch second of consensus timestamp.
+          format: int64
+          example: 1700000000
+        validStartTimestampEpochSecond:
+          type: integer
+          description: Unix epoch second of valid-start timestamp.
+          format: int64
+          example: 1699999999
+        validDurationSeconds:
+          type: string
+          description: Duration in seconds the transaction is valid.
+          example: "120"
+        entityId:
+          type: string
+          description: "The entity created or modified by this transaction (account,\
+            \ token, topic, etc.)."
+          nullable: true
+          example: 0.0.98765
+        node:
+          type: string
+          description: The node that processed the transaction.
+          nullable: true
+          example: 0.0.3
+        nonce:
+          type: integer
+          description: Nonce value for the transaction.
+          format: int32
+          example: 0
+        parentConsensusTimestampEpochSecond:
+          type: integer
+          description: "Consensus timestamp of the parent transaction, if this is\
+            \ a child."
+          format: int64
+          nullable: true
+          example: 1699999998
+        transfers:
+          type: array
+          description: HBAR transfers within this transaction.
+          items:
+            $ref: '#/components/schemas/HbarTransferResponse'
+        tokenTransfers:
+          type: array
+          description: Fungible token transfers within this transaction.
+          items:
+            $ref: '#/components/schemas/TokenTransferResponse'
+        nftTransfers:
+          type: array
+          description: NFT transfers within this transaction.
+          items:
+            $ref: '#/components/schemas/NftTransferResponse'
+        stakingRewardTransfers:
+          type: array
+          description: Staking reward transfers within this transaction.
+          items:
+            $ref: '#/components/schemas/StakingRewardTransferResponse'
+      description: Detailed information about a Hiero transaction retrieved from the
+        mirror node.
+    TopicResponse:
+      type: object
+      properties:
+        topicId:
+          type: string
+          description: The topic ID.
+          example: 0.0.55001
+        memo:
+          type: string
+          description: The memo attached to the topic.
+          example: Enterprise event bus topic
+        deleted:
+          type: boolean
+          description: Whether the topic has been deleted.
+          example: false
+        createdTimestamp:
+          type: string
+          description: The timestamp when the topic was created.
+          example: 2024-01-15T10:30:00Z
+        autoRenewPeriod:
+          type: integer
+          description: The auto-renew period of the topic in seconds.
+          format: int32
+          example: 7776000
+        hasAdminKey:
+          type: boolean
+          description: Whether the topic has an admin key configured.
+          example: true
+        hasSubmitKey:
+          type: boolean
+          description: Whether the topic has a submit key configured (private topic).
+          example: false
+      description: Topic information retrieved from the Hiero mirror node.
+    TopicMessageResponse:
+      type: object
+      properties:
+        topicId:
+          type: string
+          description: The topic ID this message belongs to.
+          example: 0.0.55001
+        sequenceNumber:
+          type: integer
+          description: The sequence number of the message within the topic.
+          format: int64
+          example: 42
+        message:
+          type: string
+          description: The message content.
+          example: "Hello, Hiero network!"
+        consensusTimestamp:
+          type: string
+          description: The consensus timestamp when the message was submitted.
+          example: 2024-01-15T10:31:00Z
+        payerAccountId:
+          type: string
+          description: The account ID that paid for the transaction.
+          example: 0.0.12345
+        runningHashBase64:
+          type: string
+          description: Base64-encoded running hash of all messages up to and including
+            this one.
+          example: d2VsbGNvbWUgdG8gaGllcm8=
+        runningHashVersion:
+          type: integer
+          description: The version of the running hash algorithm used.
+          format: int32
+          example: 3
+        chunked:
+          type: boolean
+          description: Whether this message is part of a chunked message sequence.
+          example: false
+      description: A message retrieved from a topic on the Hiero mirror node.
+    TokenInfoResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          description: The token ID.
+          example: 0.0.55001
+        name:
+          type: string
+          description: The full name of the token.
+          example: My Enterprise Token
+        symbol:
+          type: string
+          description: The ticker symbol of the token.
+          example: MET
+        type:
+          type: string
+          description: The token type (FUNGIBLE_COMMON or NON_FUNGIBLE_UNIQUE).
+          example: FUNGIBLE_COMMON
+        memo:
+          type: string
+          description: The memo attached to the token.
+          nullable: true
+          example: Enterprise reward token
+        decimals:
+          type: integer
+          description: Number of decimal places.
+          format: int64
+          example: 0
+        supplyType:
+          type: string
+          description: The supply type (INFINITE or FINITE).
+          example: INFINITE
+        totalSupply:
+          type: string
+          description: Current total supply of the token.
+          example: "10000"
+        maxSupply:
+          type: string
+          description: Maximum supply of the token.
+          example: "0"
+        treasuryAccountId:
+          type: string
+          description: The treasury account that holds newly minted tokens.
+          example: 0.0.1001
+        deleted:
+          type: boolean
+          description: Whether the token has been deleted.
+          example: false
+      description: Detailed information about a fungible token retrieved from the
+        mirror node.
+    TokenBalanceResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The account ID.
+          example: 0.0.12345
+        balance:
+          type: integer
+          description: The token balance amount.
+          format: int64
+          example: 250
+        decimals:
+          type: integer
+          description: The number of decimals the token has.
+          format: int64
+          example: 0
+      description: Response containing the balance of a specific token for an account.
+    TokenResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          description: The ID of the token.
+          example: 0.0.55001
+        name:
+          type: string
+          description: The full name of the token.
+          example: My Enterprise Token
+        symbol:
+          type: string
+          description: The ticker symbol of the token.
+          example: MET
+        type:
+          type: string
+          description: The token type.
+          example: FUNGIBLE_COMMON
+        decimals:
+          type: integer
+          description: The number of decimals.
+          format: int64
+          example: 0
+      description: "Summary information about a token, typically returned in list\
+        \ queries."
+    NftResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          description: The NFT token type ID.
+          example: 0.0.66001
+        serialNumber:
+          type: integer
+          description: The serial number of this NFT instance.
+          format: int64
+          example: 1
+        ownerId:
+          type: string
+          description: The account ID that currently owns this NFT. Null if the NFT
+            has been burned.
+          nullable: true
+          example: 0.0.12345
+        metadata:
+          type: string
+          description: Base64-encoded metadata associated with this NFT instance.
+          example: aXBmczovL1FtWHh4eHh4eHh4eHh4eHh4eHh4eA==
+      description: Represents a single minted NFT instance retrieved from the mirror
+        node.
+    NetworkSuppliesResponse:
+      type: object
+      properties:
+        releasedSupply:
+          type: string
+          description: Total amount of HBAR that has been released into circulation
+            (in tinybar).
+          example: "5000000000000000000"
+        totalSupply:
+          type: string
+          description: Total supply of HBAR including unreleased treasury holdings
+            (in tinybar).
+          example: "5000000000000000000"
+      description: Current HBAR supply figures for the Hiero network.
+    NetworkStakeResponse:
+      type: object
+      properties:
+        maxStakeReward:
+          type: integer
+          description: Maximum amount of tinybar that can be rewarded per staking
+            period.
+          format: int64
+          example: 17500000000000000
+        maxStakeRewardPerHbar:
+          type: integer
+          description: Maximum reward in tinybar per 1 HBAR staked.
+          format: int64
+          example: 6849
+        maxTotalReward:
+          type: integer
+          description: Maximum total staking reward payout per period in tinybar.
+          format: int64
+          example: 17500000000000000
+        nodeRewardFeeFraction:
+          type: number
+          description: Fraction of network fees directed to node reward accounts.
+          format: double
+          example: 0.0
+        reservedStakingRewards:
+          type: integer
+          description: Tinybar amount reserved for staking rewards.
+          format: int64
+          example: 50000000000000000
+        rewardBalanceThreshold:
+          type: integer
+          description: Minimum reward account balance in tinybar before paying out
+            rewards.
+          format: int64
+          example: 25000000000000000
+        stakeTotal:
+          type: integer
+          description: Total tinybar amount currently staked for reward across all
+            nodes.
+          format: int64
+          example: 5000000000000000
+        stakingPeriodDuration:
+          type: integer
+          description: Duration of a staking period in minutes.
+          format: int64
+          example: 1440
+        stakingPeriodsStored:
+          type: integer
+          description: Number of staking periods stored in the contract.
+          format: int64
+          example: 365
+        stakingRewardFeeFraction:
+          type: number
+          description: Fraction of network fees directed to staking reward accounts.
+          format: double
+          example: 0.1
+        stakingRewardRate:
+          type: integer
+          description: Tinybar reward rate per HBAR staked per period.
+          format: int64
+          example: 100
+        stakingStartThreshold:
+          type: integer
+          description: Minimum stake total in tinybar before staking rewards are activated.
+          format: int64
+          example: 25000000000000000
+        unreservedStakingRewardBalance:
+          type: integer
+          description: Tinybar balance of the staking reward account not reserved.
+          format: int64
+          example: 12000000000000000
+      description: Current staking configuration and statistics for the Hiero network.
+    NetworkFeeResponse:
+      type: object
+      properties:
+        gas:
+          type: integer
+          description: The gas cost for this transaction type.
+          format: int64
+          example: 853000
+        transactionType:
+          type: string
+          description: The Hedera transaction type this fee applies to.
+          example: CRYPTOTRANSFER
+      description: EVM gas fee for a specific Hiero smart contract or Ethereum transaction
+        type.
+    ExchangeRateResponse:
+      type: object
+      properties:
+        centEquivalent:
+          type: integer
+          description: The USD cent equivalent in this rate.
+          format: int32
+          example: 12
+        hbarEquivalent:
+          type: integer
+          description: The HBAR equivalent in this rate.
+          format: int32
+          example: 1
+        expirationTimeEpochSecond:
+          type: integer
+          description: Unix epoch second at which this rate expires.
+          format: int64
+          example: 1700000000
+      description: Represents a single HBAR/USD exchange rate at a given point in
+        time.
+    ExchangeRatesResponse:
+      type: object
+      properties:
+        currentRate:
+          $ref: '#/components/schemas/ExchangeRateResponse'
+        nextRate:
+          $ref: '#/components/schemas/ExchangeRateResponse'
+      description: The current and next HBAR/USD exchange rates from the Hiero network.
+    FileInfoResponse:
+      type: object
+      properties:
+        fileId:
+          type: string
+          description: The file ID.
+          example: 0.0.77001
+        size:
+          type: integer
+          description: Size of the file in bytes.
+          format: int32
+          example: 42
+        deleted:
+          type: boolean
+          description: Whether the file has been deleted.
+          example: false
+        expirationTimeEpochSecond:
+          type: integer
+          description: Unix epoch second at which the file expires.
+          format: int64
+          example: 1800000000
+      description: "Metadata about an HFS file — size, deletion status, and expiration\
+        \ time."
+    FileContentsResponse:
+      type: object
+      properties:
+        fileId:
+          type: string
+          description: The file ID.
+          example: 0.0.77001
+        contents:
+          type: string
+          description: Base64-encoded file contents.
+          example: SGVsbG8gSGllcm8h
+      description: Response containing the contents of an HFS file.
+    BlockResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of transactions included in this block.
+          format: int64
+          example: 3
+        hapiVersion:
+          type: string
+          description: HAPI (Hedera API) version active when this block was produced.
+          example: 0.49.0
+        hash:
+          type: string
+          description: The EVM-compatible 32-byte hash of this block (hex-encoded).
+          example: 0x5b6e7a8c...
+        name:
+          type: string
+          description: Human-readable block name.
+          example: 2024-01-15T10:30:00Z
+        number:
+          type: integer
+          description: Sequential block number on the Hiero network.
+          format: int64
+          example: 61234567
+        previousHash:
+          type: string
+          description: Hash of the immediately preceding block.
+          example: 0x4a5d6b7c...
+        size:
+          type: integer
+          description: Total size of the block in bytes.
+          format: int64
+          example: 2048
+        fromTimestampEpochSecond:
+          type: integer
+          description: Unix epoch second marking the start of this block's time window.
+          format: int64
+          nullable: true
+          example: 1700000000
+        toTimestampEpochSecond:
+          type: integer
+          description: Unix epoch second marking the end of this block's time window.
+          format: int64
+          nullable: true
+          example: 1700000002
+        gasUsed:
+          type: integer
+          description: Total EVM gas consumed by all transactions in this block.
+          format: int64
+          example: 850000
+        logsBloom:
+          type: string
+          description: EVM logs bloom filter (hex-encoded). Null if no EVM logs were
+            emitted.
+          nullable: true
+          example: 0x00000000...
+      description: A single Hiero network block as returned by the mirror node.
+    AccountInfoResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The Hedera account ID.
+          example: 0.0.12345
+        evmAddress:
+          type: string
+          description: The EVM-compatible address of the account.
+          example: 0x00000000000000000000000000000000000030d9
+        balanceTinybars:
+          type: integer
+          description: "The current account balance in tinybars (1 HBAR = 100,000,000\
+            \ tinybars)."
+          format: int64
+          example: 1000000000
+        ethereumNonce:
+          type: integer
+          description: "The Ethereum nonce of the account, used for EVM-compatible\
+            \ transactions."
+          format: int64
+          example: 0
+        pendingRewardTinybars:
+          type: integer
+          description: The pending staking reward in tinybars that has not yet been
+            collected.
+          format: int64
+          example: 5000000
+      description: Detailed account information retrieved from the Hiero mirror node.
+    BalanceResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The account ID
+          example: 0.0.12345
+        balanceHbar:
+          type: string
+          description: The balance of the account in HBAR
+          example: "10.5"
+    DeleteTopicRequest:
+      required:
+      - adminPrivateKey
+      type: object
+      properties:
+        adminPrivateKey:
+          type: string
+          description: "The admin private key of the topic, used to authorise the\
+            \ deletion."
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for deleting a topic. The admin key is required to
+        authorise the deletion.
+    DeleteAccountRequest:
+      required:
+      - privateKey
+      type: object
+      properties:
+        privateKey:
+          type: string
+          description: "The private key of the account to be deleted, used to authorise\
+            \ the deletion."
+          example: 302e020100300506032b657004220420aabbcc...
+      description: Request body for deleting an account. The remaining balance will
+        be transferred to the operator account.
+    DeleteAccountToRecipientRequest:
+      required:
+      - accountPrivateKey
+      - recipientPrivateKey
+      type: object
+      properties:
+        accountPrivateKey:
+          type: string
+          description: "The private key of the account being deleted, used to authorise\
+            \ the deletion."
+          example: 302e020100300506032b657004220420aabbcc...
+        recipientPrivateKey:
+          type: string
+          description: The private key of the recipient account. Required because
+            the recipient must co-sign the deletion transaction.
+          example: 302e020100300506032b657004220420ddeeff...
+      description: Private keys required to authorise a delete-and-transfer operation.
+        Both the account being deleted and the recipient must sign the transaction.

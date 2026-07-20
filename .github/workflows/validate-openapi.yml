@@ -1,0 +1,39 @@
+name: Validate OpenAPI Spec
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'hiero-proxy-server/src/**'
+      - 'openapi/spec.yaml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'hiero-proxy-server/src/**'
+      - 'openapi/spec.yaml'
+
+jobs:
+  validate-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install vacuum OpenAPI linter
+        run: |
+          curl -fsSL https://quobix.com/scripts/install_vacuum.sh | sh
+
+      - name: Validate OpenAPI spec
+        run: |
+          vacuum lint -d openapi/spec.yaml --no-style
+
+      - name: Check spec is valid YAML and parseable
+        run: |
+          python3 -c "
+          import yaml, sys
+          with open('openapi/spec.yaml') as f:
+              spec = yaml.safe_load(f)
+          assert spec.get('openapi'), 'Missing openapi version field'
+          assert spec.get('paths'), 'No paths defined in spec'
+          print(f\"Spec valid: {spec['info']['title']} {spec['info']['version']}\")
+          print(f\"Endpoints: {len(spec['paths'])} paths\")
+          "
